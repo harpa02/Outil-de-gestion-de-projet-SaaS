@@ -1,16 +1,85 @@
-# React + Vite
+# SaaS Project Manager
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Outil de gestion de projet multi-entreprises inspiré de Trello / Notion / ClickUp, développé dans le cadre du **TD1 – Architecture MongoDB & SaaS**.
 
-Currently, two official plugins are available:
+## Stack technique
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Couche     | Technologie                        |
+|------------|------------------------------------|
+| Frontend   | React 19 + Vite 8 (SPA)           |
+| Backend    | Node.js + Express 5 (API REST)     |
+| Base de données | MongoDB 7 (driver officiel)  |
+| Conteneurisation | Docker + Docker Compose      |
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Démarrage en une seule commande
 
-## Expanding the Oxlint configuration
+```bash
+docker compose up -d --build
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+L'application est ensuite accessible sur : **http://localhost:3000**
+
+> Aucune installation de dépendances ni configuration manuelle supplémentaire n'est nécessaire, à l'exception de **Docker** et **Docker Compose**.
+
+---
+
+## Configuration
+
+La connexion MongoDB est entièrement configurable via la variable d'environnement `MONGODB_URI` dans le fichier `compose.yml`, sans modifier le code source :
+
+```yaml
+environment:
+  - MONGODB_URI=mongodb://mongodb:27017/saas_pm
+```
+
+Pour pointer vers un Replica Set ou un cluster sharder (Partie II), il suffit de modifier cette valeur :
+
+```yaml
+  - MONGODB_URI=mongodb://rs1:27017,rs2:27017,rs3:27017/saas_pm?replicaSet=rs0
+```
+
+---
+
+## Fonctionnalités principales
+
+- ✅ **Multi-tenant strict** : isolation par `companyId` sur toutes les collections
+- ✅ **Gestion des entreprises** : création, modification, suppression en cascade
+- ✅ **Gestion des projets** : CRUD, assignation de membres, suivi de progression
+- ✅ **Gestion des utilisateurs** : CRUD, rôles (admin / manager / membre)
+- ✅ **Tableau Kanban** : visualisation et déplacement des tâches entre 4 colonnes
+- ✅ **Tâches** : création, assignation, priorité, date d'échéance, statut
+- ✅ **Données de démo** : 2 entreprises pré-peuplées au premier démarrage
+
+---
+
+## Architecture Docker
+
+```
+compose.yml
+├── mongodb   (mongo:7, port 27017, volume persistant)
+└── app       (build Dockerfile multi-stage, port 3000)
+```
+
+Le service `app` attend que le healthcheck de `mongodb` soit validé avant de démarrer.
+
+---
+
+## Données de démonstration
+
+Au premier démarrage (base vide), deux entreprises sont injectées automatiquement pour tester l'étanchéité multi-tenant :
+
+| Entreprise            | Plan       | Membres | Projets |
+|-----------------------|------------|---------|---------|
+| Acme Innovation SaaS  | Enterprise | 3       | 2       |
+| Nova Studio Digital   | Pro        | 2       | 1       |
+
+---
+
+## Livrables TD1
+
+- 📄 [Spécification Technique (Architecture MongoDB & Schémas JSON)](docs/SPECIFICATION_TECHNIQUE.md)
+- 📋 [Spécification Fonctionnelle (Fonctionnalités & Rôles)](docs/SPECIFICATION_FONCTIONNELLE.md)
+- 🐳 `Dockerfile` + `compose.yml` (Démarrage 1 commande via `docker compose up -d --build`)
+

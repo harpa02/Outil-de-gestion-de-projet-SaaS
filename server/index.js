@@ -61,7 +61,7 @@ if (fs.existsSync(distPath)) {
   app.use(express.static(distPath))
   
   // Redirection des routes SPA (sauf /api) vers index.html
-  app.get('*', (req, res) => {
+  app.get('/{*path}', (req, res) => {
     if (!req.path.startsWith('/api')) {
       res.sendFile(path.join(distPath, 'index.html'))
     } else {
