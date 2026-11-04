@@ -1,12 +1,20 @@
 import { Router } from 'express'
 import { ObjectId } from 'mongodb'
 import { getDB } from '../db.js'
-import { requireCompany } from '../middleware/tenant.js'
+import { requireAuth, requireActive } from '../middleware/auth.js'
 
 const router = Router()
 
-// Isolation d'entreprise obligatoire
-router.use(requireCompany)
+// Authentification et compte actif requis pour toutes les routes projets
+router.use(requireAuth, requireActive)
+
+// Vérification que l'utilisateur appartient à une entreprise
+router.use((req, res, next) => {
+  if (!req.companyId) {
+    return res.status(403).json({ error: 'Vous devez rejoindre une entreprise.' })
+  }
+  next()
+})
 
 // GET /api/projects - Liste des projets de l'entreprise avec membres et avancement
 router.get('/', async (req, res) => {

@@ -8,6 +8,7 @@ import fs from 'fs'
 import { connectDB, getDB } from './db.js'
 import { seedInitialData } from './seed.js'
 
+import authRouter from './routes/auth.js'
 import companiesRouter from './routes/companies.js'
 import usersRouter from './routes/users.js'
 import projectsRouter from './routes/projects.js'
@@ -25,10 +26,10 @@ const PORT = process.env.PORT || 3000
 app.use(cors())
 app.use(express.json())
 
-// Logs des requêtes API
+// Logs des requêtes API (authentification JWT, plus de X-Company-Id)
 app.use((req, res, next) => {
   if (req.path.startsWith('/api')) {
-    console.log(`[API] ${req.method} ${req.path} - Tenant: ${req.headers['x-company-id'] || 'None'}`)
+    console.log(`[API] ${req.method} ${req.path}`)
   }
   next()
 })
@@ -48,7 +49,8 @@ app.get('/api/health', (req, res) => {
   }
 })
 
-// Enregistrement des routes API multi-tenants
+// Enregistrement des routes API
+app.use('/api/auth', authRouter)
 app.use('/api/companies', companiesRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/projects', projectsRouter)
@@ -59,7 +61,7 @@ const distPath = path.join(__dirname, '../dist')
 if (fs.existsSync(distPath)) {
   console.log(`[Static] Distribution frontend servie depuis : ${distPath}`)
   app.use(express.static(distPath))
-  
+
   // Redirection des routes SPA (sauf /api) vers index.html
   app.get('/{*path}', (req, res) => {
     if (!req.path.startsWith('/api')) {

@@ -52,9 +52,12 @@ async function initIndexes() {
     // Index entreprises
     await companies.createIndex({ slug: 1 }, { unique: true })
 
-    // Index utilisateurs (Clé composite companyId + email pour garantir l'unicité par entreprise)
-    await users.createIndex({ companyId: 1, email: 1 }, { unique: true })
+    // Index utilisateurs — email unique global (authentification JWT)
+    await users.createIndex({ email: 1 }, { unique: true })
+    // Index pour filtrer par entreprise
     await users.createIndex({ companyId: 1 })
+    // Index composite pour filtrer par entreprise et statut (approbation des membres)
+    await users.createIndex({ companyId: 1, status: 1 })
 
     // Index projets (Clé de partition companyId pour l'isolation et le sharding)
     await projects.createIndex({ companyId: 1, createdAt: -1 })

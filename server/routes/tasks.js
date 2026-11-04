@@ -1,12 +1,20 @@
 import { Router } from 'express'
 import { ObjectId } from 'mongodb'
 import { getDB } from '../db.js'
-import { requireCompany } from '../middleware/tenant.js'
+import { requireAuth, requireActive } from '../middleware/auth.js'
 
 const router = Router()
 
-// Isolation d'entreprise obligatoire
-router.use(requireCompany)
+// Authentification et compte actif requis pour toutes les routes tâches
+router.use(requireAuth, requireActive)
+
+// Vérification que l'utilisateur appartient à une entreprise
+router.use((req, res, next) => {
+  if (!req.companyId) {
+    return res.status(403).json({ error: 'Vous devez rejoindre une entreprise.' })
+  }
+  next()
+})
 
 // GET /api/tasks - Liste des tâches avec filtres (projet, utilisateur, statut) et population
 router.get('/', async (req, res) => {
@@ -83,14 +91,14 @@ router.get('/:id', async (req, res) => {
 // POST /api/tasks - Créer une nouvelle tâche dans un projet
 router.post('/', async (req, res) => {
   try {
-    const { 
-      title, 
-      description = '', 
-      projectId, 
-      assignedUserId = null, 
-      status = 'todo', 
+    const {
+      title,
+      description = '',
+      projectId,
+      assignedUserId = null,
+      status = 'todo',
       priority = 'medium',
-      dueDate = null 
+      dueDate = null
     } = req.body
 
     if (!title || !projectId) {
@@ -137,7 +145,7 @@ router.post('/', async (req, res) => {
     }
 
     const result = await db.collection('tasks').insertOne(newTask)
-    
+
     // Récupérer la tâche insérée enrichie
     const inserted = { ...newTask, _id: result.insertedId, project }
     if (assignedUserObjectId) {

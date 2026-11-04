@@ -1,23 +1,36 @@
 import { Router } from 'express'
 import { ObjectId } from 'mongodb'
 import { getDB } from '../db.js'
-import { requireCompany } from '../middleware/tenant.js'
+import { requireAuth, requireActive } from '../middleware/auth.js'
+import { sanitizeUser } from './auth.js'
 
 const router = Router()
 
-// Toutes les routes utilisateurs nécessitent le middleware d'isolation d'entreprise
-router.use(requireCompany)
+// Toutes les routes utilisateurs nécessitent authentification et compte actif
+router.use(requireAuth, requireActive)
 
-// GET /api/users - Liste des utilisateurs rattachés à l'entreprise active
+// GET /api/users - Liste des utilisateurs rattachés à l'entreprise de l'utilisateur connecté
 router.get('/', async (req, res) => {
   try {
+    if (!req.companyId) {
+      return res.status(403).json({ error: 'Vous devez rejoindre une entreprise.' })
+    }
+
     const db = getDB()
+
+    // Construire le filtre : masquer les membres en attente sauf si l'utilisateur est admin
+    const filter = { companyId: req.companyId }
+    if (req.user.role !== 'admin') {
+      filter.status = 'active'
+    }
+
     const users = await db.collection('users')
-      .find({ companyId: req.companyId })
+      .find(filter)
       .sort({ createdAt: -1 })
       .toArray()
 
-    res.json(users)
+    // Retourner les utilisateurs sans le hash du mot de passe
+    res.json(users.map(sanitizeUser))
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -26,99 +39,85 @@ router.get('/', async (req, res) => {
 // GET /api/users/:id - Détail d'un utilisateur au sein de l'entreprise active
 router.get('/:id', async (req, res) => {
   try {
+    if (!req.companyId) {
+      return res.status(403).json({ error: 'Vous devez rejoindre une entreprise.' })
+    }
+
     const db = getDB()
-    const user = await db.collection('users').findOne({ 
-      _id: new ObjectId(req.params.id), 
-      companyId: req.companyId 
+    const user = await db.collection('users').findOne({
+      _id: new ObjectId(req.params.id),
+      companyId: req.companyId
     })
-    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable dans cette entreprise' })
-    res.json(user)
+
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable dans cette entreprise.' })
+
+    res.json(sanitizeUser(user))
   } catch {
-    res.status(400).json({ error: 'Identifiant d\'utilisateur invalide' })
+    res.status(400).json({ error: 'Identifiant d\'utilisateur invalide.' })
   }
 })
 
-// POST /api/users - Créer un utilisateur au sein de l'entreprise active
-router.post('/', async (req, res) => {
-  try {
-    const { name, email, role = 'member', avatar } = req.body
-    if (!name || !email) {
-      return res.status(400).json({ error: 'Le nom et l\'email sont requis.' })
-    }
-
-    const cleanEmail = email.toLowerCase().trim()
-    const db = getDB()
-
-    // Vérifier l'unicité au sein de cette entreprise
-    const existing = await db.collection('users').findOne({ 
-      companyId: req.companyId, 
-      email: cleanEmail 
-    })
-
-    if (existing) {
-      return res.status(400).json({ error: `Un utilisateur avec l'email ${cleanEmail} existe déjà dans cette entreprise.` })
-    }
-
-    const newUser = {
-      companyId: req.companyId,
-      name: name.trim(),
-      email: cleanEmail,
-      role, // 'admin' | 'manager' | 'member'
-      avatar: avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-
-    const result = await db.collection('users').insertOne(newUser)
-    res.status(201).json({ ...newUser, _id: result.insertedId })
-  } catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
-// PUT /api/users/:id - Modifier un utilisateur au sein de l'entreprise active
+// PUT /api/users/:id - Modifier un utilisateur (soi-même ou admin uniquement)
 router.put('/:id', async (req, res) => {
   try {
-    const { name, email, role, avatar } = req.body
     const userId = new ObjectId(req.params.id)
+
+    // Vérifier que l'utilisateur modifie son propre profil ou est admin
+    const isSelf = userId.toString() === req.user._id.toString()
+    const isAdmin = req.user.role === 'admin'
+
+    if (!isSelf && !isAdmin) {
+      return res.status(403).json({ error: 'Vous ne pouvez modifier que votre propre profil.' })
+    }
+
+    const { firstName, lastName, email, role, avatar } = req.body
     const db = getDB()
 
-    const updateDoc = {
-      $set: {
-        ...(name && { name: name.trim() }),
-        ...(email && { email: email.toLowerCase().trim() }),
-        ...(role && { role }),
-        ...(avatar && { avatar }),
-        updatedAt: new Date()
-      }
+    const updateFields = { updatedAt: new Date() }
+
+    // Champs modifiables par l'utilisateur lui-même
+    if (firstName) updateFields.firstName = firstName.trim()
+    if (lastName) updateFields.lastName = lastName.trim()
+    if (email) updateFields.email = email.toLowerCase().trim()
+    if (avatar) updateFields.avatar = avatar
+
+    // Seul un admin peut modifier le rôle d'un autre utilisateur
+    if (role && isAdmin && !isSelf) {
+      updateFields.role = role
     }
 
     const result = await db.collection('users').findOneAndUpdate(
       { _id: userId, companyId: req.companyId },
-      updateDoc,
+      { $set: updateFields },
       { returnDocument: 'after' }
     )
 
-    if (!result) return res.status(404).json({ error: 'Utilisateur introuvable dans cette entreprise' })
-    res.json(result)
+    if (!result) return res.status(404).json({ error: 'Utilisateur introuvable dans cette entreprise.' })
+
+    res.json(sanitizeUser(result))
   } catch (error) {
     res.status(400).json({ error: error.message })
   }
 })
 
-// DELETE /api/users/:id - Supprimer un utilisateur de l'entreprise active
+// DELETE /api/users/:id - Supprimer un utilisateur (admin uniquement)
 router.delete('/:id', async (req, res) => {
   try {
+    // Seul un admin peut supprimer un utilisateur
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Seul un administrateur peut supprimer un utilisateur.' })
+    }
+
     const userId = new ObjectId(req.params.id)
     const db = getDB()
 
-    const result = await db.collection('users').deleteOne({ 
-      _id: userId, 
-      companyId: req.companyId 
+    const result = await db.collection('users').deleteOne({
+      _id: userId,
+      companyId: req.companyId
     })
 
     if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Utilisateur introuvable dans cette entreprise' })
+      return res.status(404).json({ error: 'Utilisateur introuvable dans cette entreprise.' })
     }
 
     // Retirer l'utilisateur des projets et désassigner ses tâches
@@ -133,7 +132,7 @@ router.delete('/:id', async (req, res) => {
       )
     ])
 
-    res.json({ message: 'Utilisateur supprimé avec succès' })
+    res.json({ message: 'Utilisateur supprimé avec succès.' })
   } catch (error) {
     res.status(400).json({ error: error.message })
   }
