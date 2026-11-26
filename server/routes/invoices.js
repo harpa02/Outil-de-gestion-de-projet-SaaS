@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { clientId, description = '', amountHT, vatRate = 20, status = 'pending', paymentMethod = 'Virement', date } = req.body
+    const { clientId, description = '', amountHT, status = 'pending', paymentMethod = 'Virement', date } = req.body
     if (!clientId) return res.status(400).json({ error: 'Le client est requis.' })
     const ht = Number(amountHT)
     if (!(ht > 0)) return res.status(400).json({ error: 'Le montant HT doit être supérieur à 0.' })
@@ -32,13 +32,15 @@ router.post('/', async (req, res) => {
     const client = await db.collection('clients').findOne({ _id: new ObjectId(clientId), companyId: req.companyId })
     if (!client) return res.status(400).json({ error: 'Client introuvable.' })
 
-    const vat = Number(vatRate) || 0
+    // La TVA est globale et configurée par le CEO dans l'onglet Entreprises.
+    const company = await db.collection('companies').findOne({ _id: req.companyId })
+    const vat = Number(company?.vatRate ?? 20)
     const vatAmount = +(ht * (vat / 100)).toFixed(2)
     const totalTTC = +(ht + vatAmount).toFixed(2)
     const count = await db.collection('invoices').countDocuments({ companyId: req.companyId })
     const ref = `FAC-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`
 
-    const needsApproval = req.user.role === 'member'
+    const needsApproval = req.user.role === 'employee'
     const doc = {
       companyId: req.companyId,
       clientId: client._id,
@@ -68,8 +70,8 @@ router.post('/', async (req, res) => {
 // PATCH /api/invoices/:id/approve - Valider une facture (manager/admin)
 router.patch('/:id/approve', async (req, res) => {
   try {
-    if (!['admin', 'manager'].includes(req.user.role)) {
-      return res.status(403).json({ error: 'Seul un manager ou un administrateur peut valider une facture.' })
+    if (!['ceo', 'manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Seul un manager ou le CEO peut valider une facture.' })
     }
     const db = getDB()
     const result = await db.collection('invoices').findOneAndUpdate(

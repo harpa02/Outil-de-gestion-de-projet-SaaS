@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../store'
 import InvoicePrintView from './InvoicePrintView'
-import { Receipt, Plus, Printer, Trash2, Loader2, ShieldCheck, AlertCircle } from 'lucide-react'
+import { Receipt, Plus, Printer, Trash2, Loader2, ShieldCheck, AlertCircle, Percent, Filter, RotateCcw } from 'lucide-react'
+import { ROLES } from '../roleUtils'
 
 const inputStyle = { width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '13px', boxSizing: 'border-box', background: 'var(--bg-color)', color: 'var(--text-main)' }
 const STATUS = [
@@ -10,14 +11,37 @@ const STATUS = [
   { value: 'overdue', label: 'En retard', bg: '#fee2e2', color: '#b91c1c' },
 ]
 
+const SORT_OPTIONS = [
+  { value: 'date-desc', label: 'Date : récente → ancienne' },
+  { value: 'date-asc', label: 'Date : ancienne → récente' },
+  { value: 'client-asc', label: 'Client : A → Z' },
+  { value: 'amount-asc', label: 'Montant : croissant' },
+  { value: 'amount-desc', label: 'Montant : décroissant' },
+]
+
+const EMPTY_FORM = () => ({
+  clientId: '',
+  description: '',
+  amountHT: '',
+  status: 'pending',
+  paymentMethod: 'Virement',
+  date: new Date().toISOString().slice(0, 10),
+})
+const EMPTY_FILTERS = { clientId: '', status: '' }
+
 export default function Billing() {
   const { user, clients, invoices, company, fetchClients, fetchInvoices, createInvoice, updateInvoiceStatus, approveInvoice, deleteInvoice } = useStore()
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
   const [printing, setPrinting] = useState(null)
   const [approvingId, setApprovingId] = useState(null)
-  const [form, setForm] = useState({ clientId: '', description: '', amountHT: '', vatRate: 20, status: 'pending', paymentMethod: 'Virement', date: new Date().toISOString().slice(0, 10) })
-  const canValidate = user?.role === 'admin' || user?.role === 'manager'
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [sort, setSort] = useState('date-desc')
+
+  const canValidate = user?.role === ROLES.CEO || user?.role === ROLES.MANAGER
+  const vatRate = Number(company?.vatRate ?? 20)
+  const ttc = (invoice) => Number(invoice.totalTTC ?? (Number(invoice.amountHT || 0) + Number(invoice.amountHT || 0) * (Number(invoice.vatRate || 0) / 100)))
 
   useEffect(() => { Promise.all([fetchClients(), fetchInvoices()]).finally(() => setLoading(false)) }, [fetchClients, fetchInvoices])
 
@@ -25,7 +49,7 @@ export default function Billing() {
     e.preventDefault()
     await createInvoice(form)
     setShowNew(false)
-    setForm({ clientId: '', description: '', amountHT: '', vatRate: 20, status: 'pending', paymentMethod: 'Virement', date: new Date().toISOString().slice(0, 10) })
+    setForm(EMPTY_FORM())
   }
 
   const handleApprove = async (id) => {
@@ -33,11 +57,37 @@ export default function Billing() {
     try { await approveInvoice(id) } finally { setApprovingId(null) }
   }
 
+  const visibleInvoices = useMemo(() => {
+    const filtered = invoices.filter(invoice => {
+      if (filters.clientId && String(invoice.clientId) !== filters.clientId) return false
+      if (filters.status && invoice.status !== filters.status) return false
+      return true
+    })
+
+    return filtered.sort((a, b) => {
+      switch (sort) {
+        case 'client-asc':
+          return String(a.clientName || '').localeCompare(String(b.clientName || ''), 'fr', { sensitivity: 'base' })
+        case 'date-asc':
+          return new Date(a.date || a.createdAt) - new Date(b.date || b.createdAt)
+        case 'amount-asc':
+          return ttc(a) - ttc(b)
+        case 'amount-desc':
+          return ttc(b) - ttc(a)
+        case 'date-desc':
+        default:
+          return new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt)
+      }
+    })
+  }, [invoices, filters, sort])
+
   if (printing) return <InvoicePrintView invoice={printing} company={company} onClose={() => setPrinting(null)} />
   if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}><Loader2 size={28} className="animate-spin" color="var(--accent)" /></div>
 
+  // Les totaux portent sur toutes les factures, pas seulement la sélection filtrée.
   const totalHT = invoices.reduce((s, i) => s + Number(i.amountHT || 0), 0)
-  const totalTTC = invoices.reduce((s, i) => s + Number(i.amountHT || 0) + Number(i.amountHT || 0) * (Number(i.vatRate || 0) / 100), 0)
+  const totalTTC = invoices.reduce((s, i) => s + ttc(i), 0)
+  const hasFilters = Boolean(filters.clientId || filters.status)
 
   return (
     <div>
@@ -52,14 +102,15 @@ export default function Billing() {
         <div className="card"><div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Total HT</div><div style={{ fontSize: '22px', fontWeight: 700 }}>{totalHT.toLocaleString('fr-FR')} €</div></div>
         <div className="card"><div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Total TTC</div><div style={{ fontSize: '22px', fontWeight: 700 }}>{totalTTC.toLocaleString('fr-FR')} €</div></div>
         <div className="card"><div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Factures</div><div style={{ fontSize: '22px', fontWeight: 700 }}>{invoices.length}</div></div>
+        <div className="card"><div style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}><Percent size={13} /> TVA entreprise</div><div style={{ fontSize: '22px', fontWeight: 700 }}>{vatRate} %</div></div>
       </div>
 
       {showNew && (
         <div className="card" style={{ marginBottom: '24px' }}>
           <h3 style={{ marginTop: 0 }}>Nouvelle facture</h3>
-          {user?.role === 'member' && (
+          {user?.role === ROLES.EMPLOYEE && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: 13, marginBottom: 12 }}>
-              <AlertCircle size={16} /> La facture sera visible mais devra être validée par un manager avant lancement.
+              <AlertCircle size={16} /> La facture sera visible mais devra être validée par un manager / CEO avant lancement.
             </div>
           )}
           <form onSubmit={handleCreate}>
@@ -84,7 +135,11 @@ export default function Billing() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
               <div><label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Montant HT (€) *</label><input style={inputStyle} type="number" step="0.01" min="0" required value={form.amountHT} onChange={e => setForm({ ...form, amountHT: e.target.value })} /></div>
-              <div><label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>TVA (%)</label><input style={inputStyle} type="number" step="0.1" min="0" value={form.vatRate} onChange={e => setForm({ ...form, vatRate: e.target.value })} /></div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>TVA (%) — globale</label>
+                <div style={{ ...inputStyle, background: 'var(--bg-color)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>{vatRate} %</div>
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Modifiable par le CEO dans l'onglet Entreprises.</span>
+              </div>
               <div><label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Statut de paiement</label>
                 <select style={inputStyle} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>{STATUS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}</select>
               </div>
@@ -96,6 +151,41 @@ export default function Billing() {
           </form>
         </div>
       )}
+
+      <div className="card" style={{ marginBottom: '20px', padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <Filter size={16} color="var(--accent)" />
+          <strong style={{ fontSize: 14 }}>Tris et filtres</strong>
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-secondary)' }}>
+            {visibleInvoices.length} facture(s) affichée(s) sur {invoices.length}
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', alignItems: 'end' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Trier par</label>
+            <select style={inputStyle} value={sort} onChange={e => setSort(e.target.value)}>
+              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Client</label>
+            <select style={inputStyle} value={filters.clientId} onChange={e => setFilters({ ...filters, clientId: e.target.value })}>
+              <option value="">Tous les clients</option>
+              {clients.map(c => <option key={c._id} value={c._id}>{c.companyName}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Statut</label>
+            <select style={inputStyle} value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })}>
+              <option value="">Tous les statuts</option>
+              {STATUS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
+          <button className="btn btn-secondary" onClick={() => setFilters(EMPTY_FILTERS)} disabled={!hasFilters} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 34 }}>
+            <RotateCcw size={14} /> Réinitialiser
+          </button>
+        </div>
+      </div>
 
       <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -111,9 +201,9 @@ export default function Billing() {
             </tr>
           </thead>
           <tbody>
-            {invoices.length === 0 ? (
-              <tr><td colSpan="7" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>Aucune facture.</td></tr>
-            ) : invoices.map(inv => {
+            {visibleInvoices.length === 0 ? (
+              <tr><td colSpan="7" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>Aucune facture pour ces critères.</td></tr>
+            ) : visibleInvoices.map(inv => {
               const st = STATUS.find(s => s.value === inv.status) || STATUS[0]
               const pending = inv.approvalStatus === 'pending'
               return (
@@ -124,12 +214,12 @@ export default function Billing() {
                     <div>{inv.description}</div>
                     {pending && (
                       <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', marginTop: 6, padding: '4px 8px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: 12 }}>
-                        <AlertCircle size={13} /> En attente de validation par un manager
+                        <AlertCircle size={13} /> En attente de validation par un manager / CEO
                       </div>
                     )}
                   </td>
                   <td style={{ padding: '14px', textAlign: 'right' }}>{Number(inv.amountHT || 0).toLocaleString('fr-FR')} €</td>
-                  <td style={{ padding: '14px', textAlign: 'right', fontWeight: 600 }}>{(Number(inv.amountHT || 0) + Number(inv.amountHT || 0) * (Number(inv.vatRate || 0) / 100)).toLocaleString('fr-FR')} €</td>
+                  <td style={{ padding: '14px', textAlign: 'right', fontWeight: 600 }}>{ttc(inv).toLocaleString('fr-FR')} €</td>
                   <td style={{ padding: '14px' }}>
                     <select value={inv.status} onChange={e => updateInvoiceStatus(inv._id, e.target.value)} style={{ padding: '4px 8px', borderRadius: '99px', border: '1px solid #e5e7eb', fontSize: '12px', fontWeight: 600, backgroundColor: st.bg, color: st.color }}>
                       {STATUS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}

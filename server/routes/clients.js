@@ -26,13 +26,16 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { companyName, contactName = '', email = '', address = '' } = req.body
+    const { companyName, contactName = '', contactRole = '', contactPhone = '', email = '', address = '' } = req.body
     if (!companyName?.trim()) return res.status(400).json({ error: 'Le nom du client est requis.' })
+    if (!contactName.trim()) return res.status(400).json({ error: 'Le nom du contact chez le client est requis.' })
     const db = getDB()
     const doc = {
       companyId: req.companyId,
       companyName: companyName.trim(),
       contactName: contactName.trim(),
+      contactRole: contactRole.trim(),
+      contactPhone: contactPhone.trim(),
       email: email.trim(),
       address: address.trim(),
       createdAt: new Date(),
@@ -48,7 +51,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const clientId = new ObjectId(req.params.id)
-    const { companyName, contactName, email, address } = req.body
+    const { companyName, contactName, contactRole, contactPhone, email, address } = req.body
     const db = getDB()
     const result = await db.collection('clients').findOneAndUpdate(
       { _id: clientId, companyId: req.companyId },
@@ -56,6 +59,8 @@ router.put('/:id', async (req, res) => {
         $set: {
           ...(companyName !== undefined && { companyName: companyName.trim() }),
           ...(contactName !== undefined && { contactName: contactName.trim() }),
+          ...(contactRole !== undefined && { contactRole: contactRole.trim() }),
+          ...(contactPhone !== undefined && { contactPhone: contactPhone.trim() }),
           ...(email !== undefined && { email: email.trim() }),
           ...(address !== undefined && { address: address.trim() }),
           updatedAt: new Date()

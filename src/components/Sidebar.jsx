@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../store'
-import { LayoutDashboard, Briefcase, Users, Kanban, LogOut, Shield, UserRound, Receipt, Building2 } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Users, Kanban, LogOut, Shield, UserRound, Receipt, Building2, IdCard } from 'lucide-react'
 
 export default function Sidebar() {
   const { logout, company, user, pendingCount, fetchMembers } = useStore()
@@ -9,7 +9,7 @@ export default function Sidebar() {
   const location = useLocation()
 
   useEffect(() => {
-    if (user?.role === 'admin') {
+    if (user?.role === 'ceo' || user?.role === 'manager') {
       fetchMembers().catch(() => {})
     }
   }, [user?.role, fetchMembers])
@@ -20,14 +20,15 @@ export default function Sidebar() {
     { path: '/kanban', label: 'Kanban', icon: Kanban },
     { path: '/clients', label: 'Clients', icon: UserRound },
     { path: '/billing', label: 'Facturation', icon: Receipt },
-    { path: '/users', label: 'Membres', icon: Users, badge: user?.role === 'admin' ? pendingCount : 0 },
+    { path: '/users', label: 'Membres', icon: Users, badge: user?.role === 'ceo' ? pendingCount : 0 },
     { path: '/companies', label: 'Entreprises', icon: Building2 },
+    { path: '/profile', label: 'Mon profil', icon: IdCard },
   ]
 
   const roleLabels = {
-    admin: { label: 'Administrateur', color: '#0f766e', bg: '#e6f4f1' },
+    ceo: { label: 'CEO', color: '#6d28d9', bg: '#f5f3ff' },
     manager: { label: 'Manager', color: '#1d4ed8', bg: '#eff6ff' },
-    member: { label: 'Membre', color: '#374151', bg: '#f3f4f6' },
+    employee: { label: 'Salarié', color: '#047857', bg: '#ecfdf5' },
   }
   const roleStyle = roleLabels[user?.role] || roleLabels.member
 

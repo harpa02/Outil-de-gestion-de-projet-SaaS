@@ -15,7 +15,7 @@ export default function PendingApprovalPage() {
     try {
       const data = await fetchMe()
       if (data && data.status === 'active') navigate('/')
-      else setFeedback('Votre demande est toujours en attente de validation par un administrateur.')
+      else setFeedback('Votre demande est toujours en attente de validation par le CEO.')
     } catch {
       setFeedback('Impossible de vérifier le statut pour le moment. Veuillez réessayer.')
     } finally {
@@ -33,7 +33,7 @@ export default function PendingApprovalPage() {
         </div>
         <h1 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 600 }}>Demande en attente</h1>
         <p style={{ margin: '0 0 22px', fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-          Votre accès à <strong style={{ color: 'var(--text-main)' }}>{company?.name || "l'entreprise"}</strong> est en attente d’approbation par un administrateur.
+          Votre accès à <strong style={{ color: 'var(--text-main)' }}>{company?.name || "l'entreprise"}</strong> est en attente d’approbation par le CEO.
         </p>
 
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 10, marginBottom: 20, textAlign: 'left' }}>

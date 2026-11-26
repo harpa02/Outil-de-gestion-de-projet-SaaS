@@ -76,7 +76,7 @@ export default function OnboardingPage() {
 
     try {
       await createCompanyAndJoin(companyName.trim(), companyDescription.trim())
-      // Créateur = direct Admin, accès immédiat au tableau de bord
+      // Créateur = CEO, accès immédiat au tableau de bord
       navigate('/')
     } catch (e) {
       setErr(e.message || 'Erreur lors de la création de l\'entreprise')
@@ -95,7 +95,13 @@ export default function OnboardingPage() {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      minHeight: '100vh',
+      // #root est un conteneur flex : sans width/flex, cette page se
+      // comporte comme un item réduit au contenu et reste collée à gauche.
+      flex: 1,
+      width: '100%',
+      minWidth: 0,
+      minHeight: '100dvh',
+      boxSizing: 'border-box',
       backgroundColor: 'var(--bg-color)',
       padding: '24px'
     }}>
@@ -107,7 +113,8 @@ export default function OnboardingPage() {
         padding: '36px',
         boxShadow: '0 8px 30px rgba(0,0,0,0.06)',
         border: '1px solid var(--border-color)',
-        position: 'relative'
+        position: 'relative',
+        margin: '0 auto'
       }}>
         {/* Bouton Déconnexion en haut à droite */}
         <button
@@ -269,7 +276,7 @@ export default function OnboardingPage() {
                   Rejoindre une entreprise existante
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  Sélectionnez votre entreprise dans la base. Votre accès sera soumis à validation par un administrateur.
+                  Sélectionnez votre entreprise dans la base. Votre accès sera soumis à validation par le CEO ou un manager.
                 </div>
               </div>
               <ArrowRight size={18} color="var(--text-secondary)" />
@@ -315,7 +322,7 @@ export default function OnboardingPage() {
                   Créer ma propre entreprise
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  Fondez votre espace de travail. Vous obtiendrez immédiatement le statut d'<strong>Administrateur</strong>.
+                  Fondez votre espace de travail. Vous obtiendrez immédiatement le statut de <strong>CEO</strong>.
                 </div>
               </div>
               <ArrowRight size={18} color="var(--text-secondary)" />
@@ -487,7 +494,7 @@ export default function OnboardingPage() {
                   fontSize: '12px'
                 }}>
                   <Clock size={16} style={{ flexShrink: 0 }} />
-                  <span>En rejoignant cette entreprise, un administrateur devra approuver votre demande avant que vous puissiez accéder au tableau de bord.</span>
+                  <span>En rejoignant cette entreprise, le CEO devra approuver votre demande avant que vous puissiez accéder au tableau de bord.</span>
                 </div>
 
                 <button
@@ -515,7 +522,7 @@ export default function OnboardingPage() {
 
         {/* Étape 2C : CRÉER SA PROPRE ENTREPRISE */}
         {mode === 'create' && (
-          <form onSubmit={handleCreate}>
+          <form onSubmit={handleCreate} style={{ maxWidth: '440px', margin: '0 auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <button
                 type="button"
@@ -545,7 +552,7 @@ export default function OnboardingPage() {
                 padding: '3px 8px',
                 borderRadius: '99px'
               }}>
-                <ShieldCheck size={13} /> Rôle Admin direct
+                <ShieldCheck size={13} /> Rôle CEO direct
               </div>
             </div>
 
@@ -589,7 +596,7 @@ export default function OnboardingPage() {
                 fontSize: '12px'
               }}>
                 <ShieldCheck size={16} style={{ flexShrink: 0 }} />
-                <span>En créant cette entreprise, vous devenez immédiatement son administrateur avec un contrôle total sur les projets, les tâches et les membres.</span>
+                <span>En créant cette entreprise, vous devenez immédiatement son CEO avec un contrôle total sur les projets, les tâches, les services et les membres.</span>
               </div>
 
               <button

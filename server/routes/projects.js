@@ -121,7 +121,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Certains utilisateurs assignés n\'appartiennent pas à cette entreprise.' })
     }
 
-    const needsApproval = req.user.role === 'member'
+    const needsApproval = req.user.role === 'employee'
     const newProject = {
       companyId: req.companyId,
       name: name.trim(),
@@ -145,8 +145,8 @@ router.post('/', async (req, res) => {
 // PATCH /api/projects/:id/approve - Valider un projet (manager/admin)
 router.patch('/:id/approve', async (req, res) => {
   try {
-    if (!['admin', 'manager'].includes(req.user.role)) {
-      return res.status(403).json({ error: 'Seul un manager ou un administrateur peut valider un projet.' })
+    if (!['ceo', 'manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Seul un manager ou le CEO peut valider un projet.' })
     }
     const db = getDB()
     const result = await db.collection('projects').findOneAndUpdate(

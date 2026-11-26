@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../store'
-import { Users, Plus, Trash2, Pencil, X, Check, User, Mail, MapPin, Loader2, Receipt, Eye } from 'lucide-react'
+import { Users, Plus, Trash2, Pencil, X, Check, User, Mail, Phone, MapPin, Loader2, Receipt, Eye, Briefcase } from 'lucide-react'
 
 const inputStyle = {
   width: '100%',
@@ -18,9 +18,9 @@ export default function Clients() {
   const { clients, invoices, fetchClients, fetchInvoices, createClient, updateClient, deleteClient } = useStore()
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
-  const [form, setForm] = useState({ companyName: '', contactName: '', email: '', address: '' })
+  const [form, setForm] = useState({ companyName: '', contactName: '', contactRole: '', contactPhone: '', email: '', address: '' })
   const [editingId, setEditingId] = useState(null)
-  const [editForm, setEditForm] = useState({ companyName: '', contactName: '', email: '', address: '' })
+  const [editForm, setEditForm] = useState({ companyName: '', contactName: '', contactRole: '', contactPhone: '', email: '', address: '' })
   const [selected, setSelected] = useState(null)
 
   useEffect(() => { Promise.all([fetchClients(), fetchInvoices()]).finally(() => setLoading(false)) }, [fetchClients, fetchInvoices])
@@ -29,12 +29,12 @@ export default function Clients() {
     e.preventDefault()
     await createClient(form)
     setShowNew(false)
-    setForm({ companyName: '', contactName: '', email: '', address: '' })
+    setForm({ companyName: '', contactName: '', contactRole: '', contactPhone: '', email: '', address: '' })
   }
 
   const startEdit = (c) => {
     setEditingId(c._id)
-    setEditForm({ companyName: c.companyName || '', contactName: c.contactName || '', email: c.email || '', address: c.address || '' })
+    setEditForm({ companyName: c.companyName || '', contactName: c.contactName || '', contactRole: c.contactRole || '', contactPhone: c.contactPhone || '', email: c.email || '', address: c.address || '' })
   }
 
   const handleUpdate = async (e, id) => {
@@ -48,7 +48,7 @@ export default function Clients() {
     await deleteClient(id)
   }
 
-  const ttc = (i) => Number(i.amountHT || 0) + Number(i.amountHT || 0) * (Number(i.vatRate || 0) / 100)
+  const ttc = (i) => Number(i.totalTTC ?? (Number(i.amountHT || 0) + Number(i.amountHT || 0) * (Number(i.vatRate || 0) / 100)))
   const fiche = useMemo(() => {
     if (!selected) return null
     const ci = invoices
@@ -85,8 +85,18 @@ export default function Clients() {
                 <input style={inputStyle} required value={form.companyName} onChange={e => setForm({ ...form, companyName: e.target.value })} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Contact</label>
-                <input style={inputStyle} value={form.contactName} onChange={e => setForm({ ...form, contactName: e.target.value })} />
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Nom du contact *</label>
+                <input style={inputStyle} required value={form.contactName} onChange={e => setForm({ ...form, contactName: e.target.value })} />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Fonction du contact</label>
+                <input style={inputStyle} value={form.contactRole} onChange={e => setForm({ ...form, contactRole: e.target.value })} placeholder="ex : Directrice achats" />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Téléphone du contact</label>
+                <input type="tel" style={inputStyle} value={form.contactPhone} onChange={e => setForm({ ...form, contactPhone: e.target.value })} placeholder="06 00 00 00 00" />
               </div>
             </div>
             <div style={{ marginBottom: '12px' }}>
@@ -116,7 +126,9 @@ export default function Clients() {
                 {editing ? (
                   <form onSubmit={(e) => handleUpdate(e, c._id)} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <input style={inputStyle} required value={editForm.companyName} onChange={e => setEditForm({ ...editForm, companyName: e.target.value })} placeholder="Entreprise" />
-                    <input style={inputStyle} value={editForm.contactName} onChange={e => setEditForm({ ...editForm, contactName: e.target.value })} placeholder="Contact" />
+                    <input style={inputStyle} required value={editForm.contactName} onChange={e => setEditForm({ ...editForm, contactName: e.target.value })} placeholder="Nom du contact" />
+                    <input style={inputStyle} value={editForm.contactRole} onChange={e => setEditForm({ ...editForm, contactRole: e.target.value })} placeholder="Fonction du contact" />
+                    <input style={inputStyle} type="tel" value={editForm.contactPhone} onChange={e => setEditForm({ ...editForm, contactPhone: e.target.value })} placeholder="Téléphone du contact" />
                     <input style={inputStyle} type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="E-mail" />
                     <textarea style={{ ...inputStyle, minHeight: '48px' }} value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} placeholder="Adresse" />
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -129,6 +141,8 @@ export default function Clients() {
                     <h3 style={{ margin: 0 }}>{c.companyName}</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', flex: 1 }}>
                       {c.contactName && <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><User size={14} color="#8c857b" /> {c.contactName}</div>}
+                      {c.contactRole && <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Briefcase size={14} color="#8c857b" /> {c.contactRole}</div>}
+                      {c.contactPhone && <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Phone size={14} color="#8c857b" /> {c.contactPhone}</div>}
                       {c.email && <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mail size={14} color="#8c857b" /> {c.email}</div>}
                       {c.address && <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', color: 'var(--text-secondary)' }}><MapPin size={14} color="#8c857b" style={{ marginTop: 2 }} /> <span>{c.address}</span></div>}
                     </div>
@@ -152,9 +166,11 @@ export default function Clients() {
               <div>
                 <h2 style={{ margin: '0 0 6px' }}>{selected.companyName}</h2>
                 <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {selected.contactName && <span><User size={13} /> {selected.contactName}</span>}
-                  {selected.email && <a href={`mailto:${selected.email}`} style={{ color: 'inherit' }}><Mail size={13} /> {selected.email}</a>}
-                  {selected.address && <span><MapPin size={13} /> {selected.address}</span>}
+                  {selected.contactName && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><User size={13} /> {selected.contactName}</span>}
+                  {selected.contactRole && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Briefcase size={13} /> {selected.contactRole}</span>}
+                  {selected.contactPhone && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Phone size={13} /> {selected.contactPhone}</span>}
+                  {selected.email && <a href={`mailto:${selected.email}`} style={{ color: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}><Mail size={13} /> {selected.email}</a>}
+                  {selected.address && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><MapPin size={13} /> {selected.address}</span>}
                 </div>
               </div>
               <button className="btn btn-secondary" onClick={() => setSelected(null)}><X size={16} /></button>

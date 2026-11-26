@@ -44,27 +44,34 @@ MONGODB_URI=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/saas_pm?replicaSet=
 
 ## Fonctionnalités (TD1 Partie I)
 
-- Authentification JWT (inscription, connexion).
-- Multi-tenant strict: toutes les données métier sont filtrées par `companyId` issu du JWT.
-- Entreprises: création, modification, suppression. **Seul le créateur de l'entreprise peut la modifier ou la supprimer**. Suppression en cascade des données de l'entreprise.
-- Utilisateurs: inscription, demande d'adhésion à une entreprise, approbation/rejet par admin, modification de profil/rôle, **suppression possible uniquement par l'utilisateur lui-même**.
-- Projets: CRUD, assignation d'utilisateurs, statut, progression.
+- Authentification JWT (inscription, connexion) et onboarding centralisé: création d'entreprise à l'inscription ou demande d'adhésion en attente d'approbation.
+- Multi-tenant strict: toutes les données métier sont filtrées par `companyId` issu du JWT. **Un utilisateur appartient à une seule entreprise**.
+- Rôles: **CEO**, **Manager**, **Salarié** (`ceo`, `manager`, `employee`). Un seul CEO par entreprise; le rôle du CEO est intouchable.
+  - Le CEO modifie tous les rôles sauf le sien, tous les paramètres de l'entreprise (dont la TVA), les services et les affectations.
+  - Le Manager promeut uniquement un Salarié en Manager, modifie la description de l'entreprise et gère les affectations de ses Salariés.
+  - Le Salarié est en lecture seule sur l'entreprise; son service est fixé par un supérieur.
+- Services/départements: création, renommage et suppression réservés au CEO. Fiches membres regroupées par service avec coordonnées complètes.
+- Profil: prénom, nom, e-mail et téléphone modifiables; service en lecture seule avec demande de changement validée par le supérieur hiérarchique.
+- Projets: CRUD; les projets créés par un Salarié portent le badge « En attente de validation par un manager / CEO » et sont validés par un Manager ou le CEO.
 - Tâches: CRUD, assignation à un utilisateur, statut, priorité, échéance, visualisation Kanban.
-- Fonctionnalités supplémentaires: clients, facturation, recherche globale, indicateurs d'échéance/dashboard.
+- Clients: fiche contact complète (entreprise, nom du contact obligatoire, fonction, téléphone, e-mail, adresse).
+- Facturation: TVA globale de l'entreprise configurable par le CEO, tri (client, date, montant) et filtres (client, statut), validation par Manager/CEO.
+- Fonctionnalités supplémentaires: recherche globale, indicateurs d'échéance/dashboard.
 
 ## Utilisation rapide
 
 1. Lancer `docker compose up -d --build`.
 2. Ouvrir http://localhost:3000.
 3. Créer un compte.
-4. Créer une entreprise ou demander à rejoindre une entreprise existante.
-5. Une fois actif dans une entreprise, accéder aux projets, tâches, Kanban, membres.
+4. Dans l'onboarding, créer une entreprise (vous devenez CEO) ou demander à rejoindre une entreprise existante (statut `pending_approval`, approbation par le CEO).
+5. Une fois actif dans une entreprise, accéder aux projets, tâches, Kanban, membres, clients et facturation.
 
 ## Isolation multi-tenant
 
 - L'identité et `companyId` proviennent du token JWT (`requireAuth`).
-- Les routes métier filtrent systématiquement par `companyId`.
-- La suppression d'entreprise supprime en cascade utilisateurs, projets, tâches, clients et factures liés à cette entreprise.
+- Les routes métier filtrent systématiquement par `companyId`; les permissions sont appliquées côté serveur.
+- La suppression d'entreprise (créateur CEO uniquement) supprime en cascade utilisateurs, projets, tâches, clients, factures et services liés à cette entreprise.
+- Une migration idempotente (`server/migrate.js`) convertit les anciens rôles (`admin` → `ceo`, `member` → `employee`) et initialise les nouveaux champs au démarrage.
 
 ## Commandes utiles
 

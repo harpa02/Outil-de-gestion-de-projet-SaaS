@@ -13,7 +13,32 @@ import UsersView from './components/Users'
 import Clients from './components/Clients'
 import Billing from './components/Billing'
 import CompaniesView from './components/Companies'
+import Profile from './components/Profile'
 import './index.css'
+
+function LoadingScreen() {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '100vh',
+      backgroundColor: 'var(--bg-color)',
+      gap: '12px'
+    }}>
+      <div style={{
+        width: '40px',
+        height: '40px',
+        border: '3px solid var(--border-color)',
+        borderTopColor: 'var(--accent)',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite'
+      }} />
+      <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Chargement de votre session...</span>
+    </div>
+  )
+}
 
 function App() {
   const { user, token, loading, fetchMe } = useStore()
@@ -26,27 +51,7 @@ function App() {
 
   // Écran de chargement lors de la restauration de session
   if (token && !user && loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        backgroundColor: 'var(--bg-color)',
-        gap: '12px'
-      }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          border: '3px solid var(--border-color)',
-          borderTopColor: 'var(--accent)',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite'
-        }} />
-        <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Chargement de votre session...</span>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   // Détermine la route de destination pour un utilisateur authentifié
@@ -108,7 +113,7 @@ function App() {
           !token ? (
             <Navigate to="/login" replace />
           ) : !user ? (
-            <div />
+            <LoadingScreen />
           ) : !user.companyId ? (
             <Navigate to="/onboarding" replace />
           ) : user.status === 'pending_approval' ? (
@@ -125,6 +130,7 @@ function App() {
         <Route path="billing" element={<Billing />} />
         <Route path="users" element={<UsersView />} />
         <Route path="companies" element={<CompaniesView />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
 
       {/* Redirection par défaut */}

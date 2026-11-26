@@ -51,7 +51,7 @@ export async function requireAuth(req, res, next) {
  */
 export function requireActive(req, res, next) {
   if (req.user.status === 'pending_approval') {
-    return res.status(403).json({ error: 'Votre compte est en attente d\'approbation par un administrateur.' })
+    return res.status(403).json({ error: 'Votre compte est en attente d\'approbation par le CEO.' })
   }
 
   if (req.user.status !== 'active') {
@@ -64,7 +64,7 @@ export function requireActive(req, res, next) {
 /**
  * Middleware de vérification des rôles.
  * Retourne un middleware qui vérifie que req.user.role est dans la liste des rôles autorisés.
- * @param  {...string} roles - Liste des rôles autorisés (ex: 'admin', 'manager')
+ * @param  {...string} roles - Liste des rôles autorisés (ex: 'ceo', 'manager')
  */
 export function requireRole(...roles) {
   return (req, res, next) => {

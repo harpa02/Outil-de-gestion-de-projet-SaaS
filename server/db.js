@@ -48,6 +48,7 @@ async function initIndexes() {
     const users = db.collection('users')
     const projects = db.collection('projects')
     const tasks = db.collection('tasks')
+    const departments = db.collection('departments')
     const clients = db.collection('clients')
     const invoices = db.collection('invoices')
 
@@ -69,6 +70,8 @@ async function initIndexes() {
     await tasks.createIndex({ companyId: 1, projectId: 1, status: 1 })
     await tasks.createIndex({ companyId: 1, assignedUserId: 1 })
     await tasks.createIndex({ companyId: 1, status: 1 })
+
+    await departments.createIndex({ companyId: 1, name: 1 })
 
     await clients.createIndex({ companyId: 1, createdAt: -1 })
     await invoices.createIndex({ companyId: 1, date: -1 })

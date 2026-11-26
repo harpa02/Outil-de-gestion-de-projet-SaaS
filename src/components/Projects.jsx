@@ -93,7 +93,7 @@ export default function Projects() {
   const [modalProject, setModalProject] = useState(null)
   const [loading, setLoading] = useState(true)
   const [approvingId, setApprovingId] = useState(null)
-  const canValidate = user?.role === 'admin' || user?.role === 'manager'
+  const canValidate = user?.role === 'ceo' || user?.role === 'manager'
 
   useEffect(() => {
     Promise.all([fetchProjects(), fetchUsers()]).finally(() => setLoading(false))
@@ -137,18 +137,18 @@ export default function Projects() {
             return (
               <div key={proj._id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                  <h3 style={{ margin: 0, fontSize: '16px', flex: 1 }}>{proj.name}</h3>
+                  <h3 style={{ margin: 0, fontSize: '16px', flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {proj.name}
+                    {pending && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 99, background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309' }}>
+                        <AlertCircle size={12} /> En attente de validation par un manager / CEO
+                      </span>
+                    )}
+                  </h3>
                   <span style={{ fontSize: '11px', padding: '3px 9px', borderRadius: '99px', backgroundColor: st.bg, color: st.color, fontWeight: 600, whiteSpace: 'nowrap' }}>
                     {STATUS_OPTIONS.find(o => o.value === proj.status)?.label || proj.status}
                   </span>
                 </div>
-
-                {pending && (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 12px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: 13 }}>
-                    <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-                    <span>En attente de validation par un manager avant lancement.</span>
-                  </div>
-                )}
 
                 {proj.description && <p style={{ fontSize: '13px', margin: 0 }}>{proj.description}</p>}
 

@@ -18,9 +18,9 @@ router.get('/', async (req, res) => {
 
     const db = getDB()
 
-    // Construire le filtre : masquer les membres en attente sauf si l'utilisateur est admin
+    // Construire le filtre : masquer les membres en attente sauf si l'utilisateur est CEO
     const filter = { companyId: req.companyId }
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'ceo') {
       filter.status = 'active'
     }
 
@@ -57,34 +57,25 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-// PUT /api/users/:id - Modifier un utilisateur (soi-même ou admin uniquement)
+// PUT /api/users/:id - Modifier son propre profil (rôle et service gérés ailleurs)
 router.put('/:id', async (req, res) => {
   try {
     const userId = new ObjectId(req.params.id)
 
-    // Vérifier que l'utilisateur modifie son propre profil ou est admin
-    const isSelf = userId.toString() === req.user._id.toString()
-    const isAdmin = req.user.role === 'admin'
-
-    if (!isSelf && !isAdmin) {
+    if (userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: 'Vous ne pouvez modifier que votre propre profil.' })
     }
 
-    const { firstName, lastName, email, role, avatar } = req.body
+    const { firstName, lastName, email, phone, avatar } = req.body
     const db = getDB()
 
     const updateFields = { updatedAt: new Date() }
 
-    // Champs modifiables par l'utilisateur lui-même
     if (firstName) updateFields.firstName = firstName.trim()
     if (lastName) updateFields.lastName = lastName.trim()
     if (email) updateFields.email = email.toLowerCase().trim()
+    if (phone !== undefined) updateFields.phone = String(phone).trim()
     if (avatar) updateFields.avatar = avatar
-
-    // Seul un admin peut modifier le rôle d'un autre utilisateur
-    if (role && isAdmin && !isSelf) {
-      updateFields.role = role
-    }
 
     const result = await db.collection('users').findOneAndUpdate(
       { _id: userId, companyId: req.companyId },
@@ -95,6 +86,48 @@ router.put('/:id', async (req, res) => {
     if (!result) return res.status(404).json({ error: 'Utilisateur introuvable dans cette entreprise.' })
 
     res.json(sanitizeUser(result))
+  } catch (error) {
+    res.status(400).json({ error: error.message })
+  }
+})
+
+// PATCH /api/users/:id/department-request - Demander (ou annuler) un changement de service
+router.patch('/:id/department-request', async (req, res) => {
+  try {
+    const userId = new ObjectId(req.params.id)
+    if (userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Vous ne pouvez modifier que votre propre demande.' })
+    }
+    if (!req.companyId) {
+      return res.status(403).json({ error: 'Vous devez rejoindre une entreprise.' })
+    }
+
+    const db = getDB()
+    const { departmentId } = req.body
+
+    let request = null
+    if (departmentId) {
+      const department = await db.collection('departments').findOne({
+        _id: new ObjectId(departmentId),
+        companyId: req.companyId,
+      })
+      if (!department) return res.status(400).json({ error: 'Service introuvable dans votre entreprise.' })
+      request = {
+        departmentId: department._id,
+        departmentName: department.name,
+        requestedAt: new Date(),
+        status: 'pending',
+      }
+    }
+
+    const updated = await db.collection('users').findOneAndUpdate(
+      { _id: userId, companyId: req.companyId },
+      { $set: { departmentChangeRequest: request, updatedAt: new Date() } },
+      { returnDocument: 'after' }
+    )
+    if (!updated) return res.status(404).json({ error: 'Utilisateur introuvable.' })
+
+    res.json(sanitizeUser(updated))
   } catch (error) {
     res.status(400).json({ error: error.message })
   }

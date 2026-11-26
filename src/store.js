@@ -44,6 +44,7 @@ export function StoreProvider({ children }) {
   const [tasks, setTasks] = useState([])
   const [clients, setClients] = useState([])
   const [invoices, setInvoices] = useState([])
+  const [departments, setDepartments] = useState([])
   const [pendingMembers, setPendingMembers] = useState([])
   const [pendingCount, setPendingCount] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -79,6 +80,27 @@ export function StoreProvider({ children }) {
     return apiFetch(path, options, token)
   }, [token])
 
+  // Nettoyage complet de la session (state + localStorage), utilisé au logout
+  // et dès qu'une vérification de session échoue (token expiré/invalide,
+  // utilisateur supprimé après une réinitialisation de la base, etc.).
+  const clearSession = useCallback(() => {
+    setToken(null)
+    setUser(null)
+    setCompany(null)
+    setCompanies([])
+    setProjects([])
+    setUsers([])
+    setTasks([])
+    setClients([])
+    setInvoices([])
+    setDepartments([])
+    setPendingMembers([])
+    setPendingCount(0)
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    localStorage.removeItem('company')
+  }, [])
+
   // ── Authentification ───────────────────────────────────────────
   const fetchMe = useCallback(async () => {
     if (!token) return null
@@ -94,17 +116,15 @@ export function StoreProvider({ children }) {
       }
       return data
     } catch (e) {
+      // Une session invalide doit toujours être nettoyée, quel que soit le
+      // libellé renvoyé par l'API (expiré, invalide, utilisateur supprimé...).
       setError(e.message)
-      if (e.message.includes('Session expirée') || e.message.includes('introuvable')) {
-        setToken(null)
-        setUser(null)
-        setCompany(null)
-      }
+      clearSession()
       return null
     } finally {
       setLoading(false)
     }
-  }, [token, authFetch])
+  }, [token, authFetch, clearSession])
 
   const register = useCallback(async (firstName, lastName, email, password) => {
     setError(null)
@@ -140,21 +160,8 @@ export function StoreProvider({ children }) {
   }, [])
 
   const logout = useCallback(() => {
-    setToken(null)
-    setUser(null)
-    setCompany(null)
-    setCompanies([])
-    setProjects([])
-    setUsers([])
-    setTasks([])
-    setClients([])
-    setInvoices([])
-    setPendingMembers([])
-    setPendingCount(0)
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('company')
-  }, [])
+    clearSession()
+  }, [clearSession])
 
   // Auto-chargement du profil au démarrage si token présent
   useEffect(() => {
@@ -209,7 +216,7 @@ export function StoreProvider({ children }) {
       setTasks([])
       setClients([])
       setInvoices([])
-      setUser(prev => prev ? { ...prev, companyId: null, role: 'member', status: 'active' } : prev)
+      setUser(prev => prev ? { ...prev, companyId: null, role: 'employee', status: 'active' } : prev)
     }
   }, [authFetch, company])
 
@@ -260,6 +267,69 @@ export function StoreProvider({ children }) {
     await fetchMembers()
     return updated
   }, [authFetch, fetchMembers])
+
+  const updateMemberAssignment = useCallback(async (memberId, payload) => {
+    const updated = await authFetch(`/companies/members/${memberId}/assignment`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+    await fetchMembers()
+    return updated
+  }, [authFetch, fetchMembers])
+
+  const respondDepartmentRequest = useCallback(async (memberId, approved) => {
+    const updated = await authFetch(`/companies/members/${memberId}/department-request`, {
+      method: 'PATCH',
+      body: JSON.stringify({ approved })
+    })
+    await fetchMembers()
+    return updated
+  }, [authFetch, fetchMembers])
+
+  // ── Services / départements ────────────────────────────────────
+  const fetchDepartments = useCallback(async () => {
+    try {
+      const data = await authFetch('/departments')
+      setDepartments(data)
+      return data
+    } catch (e) {
+      setError(e.message)
+      return []
+    }
+  }, [authFetch])
+
+  const createDepartment = useCallback(async (name) => {
+    const created = await authFetch('/departments', {
+      method: 'POST',
+      body: JSON.stringify({ name })
+    })
+    setDepartments(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
+    return created
+  }, [authFetch])
+
+  const updateDepartment = useCallback(async (id, name) => {
+    const updated = await authFetch(`/departments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name })
+    })
+    setDepartments(prev => prev.map(d => d._id === id ? updated : d).sort((a, b) => a.name.localeCompare(b.name)))
+    return updated
+  }, [authFetch])
+
+  const deleteDepartment = useCallback(async (id) => {
+    await authFetch(`/departments/${id}`, { method: 'DELETE' })
+    setDepartments(prev => prev.filter(d => d._id !== id))
+  }, [authFetch])
+
+  const requestDepartmentChange = useCallback(async (departmentId) => {
+    const updated = await authFetch(`/users/${user?._id}/department-request`, {
+      method: 'PATCH',
+      body: JSON.stringify({ departmentId })
+    })
+    setUser(updated)
+    setUsers(prev => prev.map(u => u._id === updated._id ? updated : u))
+    return updated
+  }, [authFetch, user])
 
   // ── Utilisateurs (membres de l'entreprise) ─────────────────────
   const fetchUsers = useCallback(async () => {
@@ -462,6 +532,7 @@ export function StoreProvider({ children }) {
     tasks,
     clients,
     invoices,
+    departments,
     pendingMembers,
     pendingCount,
     loading,
@@ -487,6 +558,15 @@ export function StoreProvider({ children }) {
     approveMember,
     rejectMember,
     changeMemberRole,
+    updateMemberAssignment,
+    respondDepartmentRequest,
+
+    // Services / départements
+    fetchDepartments,
+    createDepartment,
+    updateDepartment,
+    deleteDepartment,
+    requestDepartmentChange,
 
     // CRUD Utilisateurs
     fetchUsers,

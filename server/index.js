@@ -6,10 +6,12 @@ import { fileURLToPath } from 'url'
 import fs from 'fs'
 
 import { connectDB, getDB } from './db.js'
+import { migrateData } from './migrate.js'
 import { seedInitialData } from './seed.js'
 
 import authRouter from './routes/auth.js'
 import companiesRouter from './routes/companies.js'
+import departmentsRouter from './routes/departments.js'
 import usersRouter from './routes/users.js'
 import projectsRouter from './routes/projects.js'
 import tasksRouter from './routes/tasks.js'
@@ -54,6 +56,7 @@ app.get('/api/health', (req, res) => {
 // Enregistrement des routes API
 app.use('/api/auth', authRouter)
 app.use('/api/companies', companiesRouter)
+app.use('/api/departments', departmentsRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/projects', projectsRouter)
 app.use('/api/tasks', tasksRouter)
@@ -80,6 +83,7 @@ if (fs.existsSync(distPath)) {
 async function startServer() {
   try {
     await connectDB()
+    await migrateData()
     await seedInitialData()
 
     app.listen(PORT, '0.0.0.0', () => {

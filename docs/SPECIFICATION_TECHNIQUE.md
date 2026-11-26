@@ -32,6 +32,7 @@ Le champ `companyId` est présent dans les collections métier et indexé pour p
 - Middleware `requireAuth` vérifie le JWT, charge l'utilisateur et injecte `req.user` et `req.companyId`.
 - Les routes métier filtrent par `req.companyId`.
 - Les routes de création/lecture/édition/suppression utilisent `companyId` dans les filtres MongoDB.
+- Les permissions (rôles, paramètres entreprise, services, affectations) sont appliquées côté serveur, pas seulement dans l'interface.
 - La suppression d'une entreprise supprime en cascade ses données liées.
 
 ## 4. Structures JSON (MongoDB)
@@ -45,6 +46,7 @@ Le champ `companyId` est présent dans les collections métier et indexé pour p
   "slug": "acme-innovation",
   "description": "Entreprise de services numériques",
   "plan": "Pro",
+  "vatRate": 20,
   "createdBy": { "$oid": "..." },
   "createdAt": { "$date": "2026-01-01T00:00:00.000Z" },
   "updatedAt": { "$date": "2026-01-01T00:00:00.000Z" }
@@ -59,9 +61,14 @@ Le champ `companyId` est présent dans les collections métier et indexé pour p
   "firstName": "Alice",
   "lastName": "Martin",
   "email": "alice@acme.com",
-  "password": "<bcrypt hash>",
-  "role": "admin",
+  "passwordHash": "<bcrypt hash>",
+  "role": "ceo",
   "status": "active",
+  "phone": "06 00 00 00 00",
+  "jobTitle": "CEO",
+  "departmentId": { "$oid": "..." }, // service « CEO » de l'entreprise
+  "managedDepartmentId": null,
+  "departmentChangeRequest": null,
   "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Alice%20Martin",
   "companyId": { "$oid": "..." },
   "createdAt": { "$date": "2026-01-01T00:00:00.000Z" },
@@ -70,9 +77,23 @@ Le champ `companyId` est présent dans les collections métier et indexé pour p
 ```
 
 `status`: `active | pending_approval | rejected`.  
-`role`: `admin | manager | member`.
+`role`: `ceo | manager | employee` (un seul CEO par entreprise, rôle intouchable).  
+`departmentChangeRequest`: `{ departmentId, departmentName, requestedAt, status: 'pending' }` ou `null`.
 
-### 4.3 projects
+### 4.3 departments
+
+```json
+{
+  "_id": { "$oid": "..." },
+  "companyId": { "$oid": "..." },
+  "name": "Marketing",
+  "createdBy": { "$oid": "..." },
+  "createdAt": { "$date": "2026-01-01T00:00:00.000Z" },
+  "updatedAt": { "$date": "2026-01-01T00:00:00.000Z" }
+}
+```
+
+### 4.4 projects
 
 ```json
 {
@@ -87,7 +108,7 @@ Le champ `companyId` est présent dans les collections métier et indexé pour p
 }
 ```
 
-### 4.4 tasks
+### 4.5 tasks
 
 ```json
 {
@@ -107,6 +128,45 @@ Le champ `companyId` est présent dans les collections métier et indexé pour p
 
 `status`: `todo | in_progress | review | done`.
 
+### 4.6 clients
+
+```json
+{
+  "_id": { "$oid": "..." },
+  "companyId": { "$oid": "..." },
+  "companyName": "Client SAS",
+  "contactName": "Jean Dupont",
+  "contactRole": "Directeur achats",
+  "contactPhone": "06 00 00 00 00",
+  "email": "jean@client.fr",
+  "address": "10 rue de Paris",
+  "createdAt": { "$date": "2026-01-01T00:00:00.000Z" }
+}
+```
+
+`contactName` est obligatoire à la création et à la modification.
+
+### 4.7 invoices
+
+```json
+{
+  "_id": { "$oid": "..." },
+  "companyId": { "$oid": "..." },
+  "clientId": { "$oid": "..." },
+  "clientName": "Client SAS",
+  "ref": "FAC-2026-001",
+  "amountHT": 1000,
+  "vatRate": 20,
+  "vatAmount": 200,
+  "totalTTC": 1200,
+  "status": "pending",
+  "approvalStatus": "pending",
+  "date": { "$date": "2026-01-01T00:00:00.000Z" }
+}
+```
+
+`vatRate` est copié depuis `companies.vatRate` au moment de la création; les factures existantes conservent leur TVA d'origine.
+
 ## 5. Index MongoDB
 
 Créés au démarrage dans `server/db.js`:
@@ -120,6 +180,9 @@ projects.createIndex({ companyId: 1, status: 1 })
 tasks.createIndex({ companyId: 1, projectId: 1, status: 1 })
 tasks.createIndex({ companyId: 1, assignedUserId: 1 })
 tasks.createIndex({ companyId: 1, status: 1 })
+departments.createIndex({ companyId: 1, name: 1 })
+clients.createIndex({ companyId: 1, createdAt: -1 })
+invoices.createIndex({ companyId: 1, date: -1 })
 ```
 
 ## 6. API principale
@@ -131,19 +194,28 @@ tasks.createIndex({ companyId: 1, status: 1 })
 
 ### Companies
 - `GET /api/companies` - Lister entreprises
-- `POST /api/companies` - Créer entreprise (créateur = admin)
-- `POST /api/companies/join/:id` - Demande d'adhésion
-- `PUT /api/companies/:id` - Modifier (créateur uniquement)
-- `DELETE /api/companies/:id` - Supprimer (créateur uniquement, cascade)
-- `GET /api/companies/members` - Membres/pending (admin/manager)
-- `PATCH /api/companies/members/:id/approve` - Approuver (admin)
-- `DELETE /api/companies/members/:id/reject` - Refuser (admin)
-- `PATCH /api/companies/members/:id/role` - Modifier rôle (admin)
+- `POST /api/companies` - Créer entreprise depuis l'onboarding (créateur = CEO)
+- `POST /api/companies/join/:id` - Demande d'adhésion (une seule entreprise par compte)
+- `PUT /api/companies/:id` - Modifier (CEO : tous les champs dont TVA ; Manager : description)
+- `DELETE /api/companies/:id` - Supprimer (créateur CEO uniquement, cascade)
+- `GET /api/companies/members` - Membres/pending (CEO/Manager)
+- `PATCH /api/companies/members/:id/approve` - Approuver une adhésion (CEO)
+- `DELETE /api/companies/members/:id/reject` - Refuser une adhésion (CEO)
+- `PATCH /api/companies/members/:id/role` - Modifier rôle (matrice CEO/Manager, CEO intouchable)
+- `PATCH /api/companies/members/:id/assignment` - Service, poste, service managé (CEO/Manager)
+- `PATCH /api/companies/members/:id/department-request` - Traiter une demande de service (supérieur hiérarchique)
+
+### Departments
+- `GET /api/departments` - Lister les services de l'entreprise
+- `POST /api/departments` - Créer un service (CEO)
+- `PUT /api/departments/:id` - Renommer un service (CEO, sauf service CEO assigné)
+- `DELETE /api/departments/:id` - Supprimer un service (CEO, sauf service CEO assigné)
 
 ### Users
 - `GET /api/users` - Lister membres de l'entreprise
 - `GET /api/users/:id` - Détail
-- `PUT /api/users/:id` - Modifier (soi-même/admin selon champs)
+- `PUT /api/users/:id` - Modifier son propre profil (dont `phone`)
+- `PATCH /api/users/:id/department-request` - Demander/annuler un changement de service
 - `DELETE /api/users/:id` - Supprimer **son propre compte uniquement**
 
 ### Projects
@@ -159,9 +231,25 @@ tasks.createIndex({ companyId: 1, status: 1 })
 - `PATCH /api/tasks/:id/status`
 - `DELETE /api/tasks/:id`
 
-## 7. Docker
+### Clients et factures
+- `GET /api/clients`, `POST /api/clients`, `PUT /api/clients/:id`, `DELETE /api/clients/:id`
+- `GET /api/invoices`, `POST /api/invoices` (TVA globale de l'entreprise)
+- `PATCH /api/invoices/:id/approve` (CEO/Manager)
+- `PATCH /api/invoices/:id/status`, `DELETE /api/invoices/:id`
 
+## 7. Migration des données
+
+`server/migrate.js` est exécuté au démarrage avant le seed. Il est idempotent et :
+
+- convertit `admin` → `ceo` et `member` → `employee`;
+- garantit un seul CEO par entreprise (créateur conservé, autres admins → `manager`);
+- crée (si absent) le service « CEO » et y affecte le CEO (`jobTitle: "CEO"`);
+- initialise `phone`, `jobTitle`, `departmentId`, `managedDepartmentId`, `departmentChangeRequest` et `vatRate` (20 %) pour les documents existants.
+
+## 8. Docker
+
+- `compose.yml` et `Dockerfile` sont à la **racine du dépôt Git**.
 - `compose.yml`: MongoDB 7 + app Node.
 - `Dockerfile`: build Vite puis image runtime Node.
 - Healthcheck MongoDB avant démarrage app.
-- Démarrage: `docker compose up -d --build`.
+- Démarrage depuis la racine du dépôt: `docker compose up -d --build`.
