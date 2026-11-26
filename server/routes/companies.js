@@ -6,18 +6,20 @@ import { sanitizeUser } from './auth.js'
 
 const router = Router()
 
-// GET /api/companies - Liste des entreprises (informations minimales pour l'étape de sélection)
+// GET /api/companies - Liste des entreprises
 router.get('/', requireAuth, async (req, res) => {
   try {
     const db = getDB()
-
-    // Retourner uniquement les champs nécessaires pour le choix d'entreprise
-    const companies = await db.collection('companies')
-      .find({}, { projection: { _id: 1, name: 1, description: 1 } })
-      .sort({ name: 1 })
-      .toArray()
-
-    res.json(companies)
+    const companies = await db.collection('companies').find({}).sort({ name: 1 }).toArray()
+    const enriched = await Promise.all(companies.map(async (company) => {
+      const [userCount, projectCount, taskCount] = await Promise.all([
+        db.collection('users').countDocuments({ companyId: company._id }),
+        db.collection('projects').countDocuments({ companyId: company._id }),
+        db.collection('tasks').countDocuments({ companyId: company._id }),
+      ])
+      return { ...company, userCount, projectCount, taskCount }
+    }))
+    res.json(enriched)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -52,7 +54,8 @@ router.post('/', requireAuth, async (req, res) => {
       name: name.trim(),
       slug: cleanSlug,
       description: description?.trim() || '',
-      plan: 'Pro',
+      plan: req.body.plan?.trim() || 'Pro',
+      createdBy: req.user._id,
       createdAt: new Date(),
       updatedAt: new Date()
     }
@@ -78,6 +81,66 @@ router.post('/', requireAuth, async (req, res) => {
       company: companyDoc,
       user: sanitizeUser(updatedUser)
     })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// PUT /api/companies/:id - Modifier une entreprise (créateur uniquement)
+router.put('/:id', requireAuth, requireActive, async (req, res) => {
+  try {
+    const companyId = new ObjectId(req.params.id)
+    const db = getDB()
+    const company = await db.collection('companies').findOne({ _id: companyId })
+    if (!company) return res.status(404).json({ error: 'Entreprise introuvable.' })
+    if (!company.createdBy || company.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Seul le créateur de l\'entreprise peut la modifier.' })
+    }
+
+    const { name, description, plan } = req.body
+    const update = { updatedAt: new Date() }
+    if (name !== undefined) {
+      if (!name.trim()) return res.status(400).json({ error: 'Le nom de l\'entreprise est requis.' })
+      const cleanSlug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      const existing = await db.collection('companies').findOne({ slug: cleanSlug, _id: { $ne: companyId } })
+      if (existing) return res.status(400).json({ error: `Une entreprise avec l'identifiant "${cleanSlug}" existe déjà.` })
+      update.name = name.trim()
+      update.slug = cleanSlug
+    }
+    if (description !== undefined) update.description = description.trim()
+    if (plan !== undefined) update.plan = plan.trim() || company.plan
+
+    const updated = await db.collection('companies').findOneAndUpdate(
+      { _id: companyId },
+      { $set: update },
+      { returnDocument: 'after' }
+    )
+    res.json(updated)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// DELETE /api/companies/:id - Supprimer une entreprise (créateur uniquement)
+router.delete('/:id', requireAuth, requireActive, async (req, res) => {
+  try {
+    const companyId = new ObjectId(req.params.id)
+    const db = getDB()
+    const company = await db.collection('companies').findOne({ _id: companyId })
+    if (!company) return res.status(404).json({ error: 'Entreprise introuvable.' })
+    if (!company.createdBy || company.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Seul le créateur de l\'entreprise peut la supprimer.' })
+    }
+
+    await Promise.all([
+      db.collection('tasks').deleteMany({ companyId }),
+      db.collection('projects').deleteMany({ companyId }),
+      db.collection('clients').deleteMany({ companyId }),
+      db.collection('invoices').deleteMany({ companyId }),
+      db.collection('users').deleteMany({ companyId }),
+      db.collection('companies').deleteOne({ _id: companyId }),
+    ])
+    res.json({ message: 'Entreprise supprimée avec succès.' })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

@@ -178,6 +178,7 @@ export default function KanbanView() {
   const { currentCompany, tasks, projects, users, fetchTasks, fetchProjects, fetchUsers, updateTaskStatus, deleteTask } = useStore()
   const [modalTask, setModalTask] = useState(null)
   const [filterProject, setFilterProject] = useState('')
+  const [filterDue, setFilterDue] = useState('all')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -201,9 +202,22 @@ export default function KanbanView() {
     await deleteTask(taskId, currentCompany._id)
   }
 
-  const filtered = filterProject
-    ? tasks.filter(t => (t.projectId?._id || t.projectId?.toString() || t.projectId) === filterProject)
-    : tasks
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+  const endOfWeek = new Date(startOfToday)
+  endOfWeek.setDate(endOfWeek.getDate() + 7)
+
+  const filtered = tasks.filter(t => {
+    if (filterProject && (t.projectId?._id || t.projectId?.toString() || t.projectId) !== filterProject) return false
+    if (filterDue === 'all') return true
+    if (!t.dueDate) return filterDue === 'none'
+    const due = new Date(t.dueDate)
+    due.setHours(0, 0, 0, 0)
+    if (filterDue === 'overdue') return due < startOfToday && t.status !== 'done'
+    if (filterDue === 'week') return due >= startOfToday && due < endOfWeek && t.status !== 'done'
+    if (filterDue === 'none') return false
+    return true
+  })
 
   if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}><Loader2 size={28} className="animate-spin" color="#f59e0b" /></div>
 
@@ -218,6 +232,13 @@ export default function KanbanView() {
             style={{ padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '13px', cursor: 'pointer' }}>
             <option value="">Tous les projets</option>
             {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+          </select>
+          <select value={filterDue} onChange={e => setFilterDue(e.target.value)}
+            style={{ padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '13px', cursor: 'pointer' }}>
+            <option value="all">Toutes les échéances</option>
+            <option value="overdue">En retard</option>
+            <option value="week">Cette semaine</option>
+            <option value="none">Sans échéance</option>
           </select>
           <button className="btn btn-primary" onClick={() => setModalTask({})} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Plus size={16} /> Nouvelle tâche

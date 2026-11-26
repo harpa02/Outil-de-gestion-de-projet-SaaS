@@ -43,7 +43,7 @@ function CreateCompanyModal({ onClose, onCreated }) {
             <input value={description} onChange={e => setDescription(e.target.value)} style={inputStyle} placeholder="Activité principale..." />
           </div>
           <div>
-            <label style={labelStyle}>Plan</label>
+            <label style={labelStyle}>Offre</label>
             <select value={plan} onChange={e => setPlan(e.target.value)} style={inputStyle}>
               <option>Starter</option>
               <option>Pro</option>
@@ -96,8 +96,8 @@ function CreateUserModal({ company, onClose, onCreated }) {
             <input required value={name} onChange={e => setName(e.target.value)} style={inputStyle} placeholder="ex: Sarah Connor" />
           </div>
           <div>
-            <label style={labelStyle}>Email professionnel *</label>
-            <input required type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} placeholder="sarah@entreprise.com" />
+            <label style={labelStyle}>Adresse e-mail professionnelle *</label>
+            <input required type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} placeholder="prenom.nom@entreprise.fr" />
           </div>
           <div>
             <label style={labelStyle}>Rôle</label>
@@ -212,7 +212,7 @@ export default function AuthPortal() {
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-main)' }}>{company.name}</div>
                           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                            Plan {company.plan} · {company.userCount ?? 0} membre(s) · {company.projectCount ?? 0} projet(s)
+                            Offre {company.plan} · {company.userCount ?? 0} membre(s) · {company.projectCount ?? 0} projet(s)
                           </div>
                         </div>
                         <ChevronRight size={16} color="var(--text-secondary)" />
@@ -236,7 +236,7 @@ export default function AuthPortal() {
                 <Building2 size={20} color="#6366f1" />
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-main)' }}>{selectedCompany?.name}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Plan {selectedCompany?.plan}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Offre {selectedCompany?.plan}</div>
                 </div>
               </div>
               <button type="button" onClick={() => { setStep('company'); setErr('') }} style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>

@@ -13,6 +13,8 @@ import companiesRouter from './routes/companies.js'
 import usersRouter from './routes/users.js'
 import projectsRouter from './routes/projects.js'
 import tasksRouter from './routes/tasks.js'
+import clientsRouter from './routes/clients.js'
+import invoicesRouter from './routes/invoices.js'
 
 dotenv.config()
 
@@ -26,7 +28,7 @@ const PORT = process.env.PORT || 3000
 app.use(cors())
 app.use(express.json())
 
-// Logs des requêtes API (authentification JWT, plus de X-Company-Id)
+// Logs des requêtes API
 app.use((req, res, next) => {
   if (req.path.startsWith('/api')) {
     console.log(`[API] ${req.method} ${req.path}`)
@@ -55,6 +57,8 @@ app.use('/api/companies', companiesRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/projects', projectsRouter)
 app.use('/api/tasks', tasksRouter)
+app.use('/api/clients', clientsRouter)
+app.use('/api/invoices', invoicesRouter)
 
 // Gestion du frontend en production (Single Page Application)
 const distPath = path.join(__dirname, '../dist')

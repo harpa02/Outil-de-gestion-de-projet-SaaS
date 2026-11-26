@@ -42,6 +42,8 @@ export function StoreProvider({ children }) {
   const [projects, setProjects] = useState([])
   const [users, setUsers] = useState([])
   const [tasks, setTasks] = useState([])
+  const [clients, setClients] = useState([])
+  const [invoices, setInvoices] = useState([])
   const [pendingMembers, setPendingMembers] = useState([])
   const [pendingCount, setPendingCount] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -145,6 +147,8 @@ export function StoreProvider({ children }) {
     setProjects([])
     setUsers([])
     setTasks([])
+    setClients([])
+    setInvoices([])
     setPendingMembers([])
     setPendingCount(0)
     localStorage.removeItem('token')
@@ -180,6 +184,34 @@ export function StoreProvider({ children }) {
     setUser(data.user)
     return data
   }, [authFetch])
+
+  const createCompany = useCallback(async (payload) => {
+    const data = await authFetch('/companies', { method: 'POST', body: JSON.stringify(payload) })
+    setCompany(data.company)
+    setUser(data.user)
+    return data.company
+  }, [authFetch])
+
+  const updateCompany = useCallback(async (id, payload) => {
+    const updated = await authFetch(`/companies/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+    setCompanies(prev => prev.map(c => c._id === id ? { ...c, ...updated } : c))
+    if (company?._id === id) setCompany(prev => ({ ...prev, ...updated }))
+    return updated
+  }, [authFetch, company])
+
+  const deleteCompany = useCallback(async (id) => {
+    await authFetch(`/companies/${id}`, { method: 'DELETE' })
+    setCompanies(prev => prev.filter(c => c._id !== id))
+    if (company?._id === id) {
+      setCompany(null)
+      setProjects([])
+      setUsers([])
+      setTasks([])
+      setClients([])
+      setInvoices([])
+      setUser(prev => prev ? { ...prev, companyId: null, role: 'member', status: 'active' } : prev)
+    }
+  }, [authFetch, company])
 
   const joinCompany = useCallback(async (companyId) => {
     const data = await authFetch(`/companies/join/${companyId}`, {
@@ -286,6 +318,12 @@ export function StoreProvider({ children }) {
     return updated
   }, [authFetch])
 
+  const approveProject = useCallback(async (id) => {
+    const updated = await authFetch(`/projects/${id}/approve`, { method: 'PATCH' })
+    setProjects(prev => prev.map(p => p._id === id ? { ...p, ...updated } : p))
+    return updated
+  }, [authFetch])
+
   const deleteProject = useCallback(async (id) => {
     await authFetch(`/projects/${id}`, { method: 'DELETE' })
     setProjects(prev => prev.filter(p => p._id !== id))
@@ -342,6 +380,70 @@ export function StoreProvider({ children }) {
     setTasks(prev => prev.filter(t => t._id !== id))
   }, [authFetch])
 
+  // ── Clients ──────────────────────────────────────────────────
+  const fetchClients = useCallback(async () => {
+    try {
+      const data = await authFetch('/clients')
+      setClients(data)
+      return data
+    } catch (e) {
+      setError(e.message)
+      return []
+    }
+  }, [authFetch])
+
+  const createClient = useCallback(async (payload) => {
+    const created = await authFetch('/clients', { method: 'POST', body: JSON.stringify(payload) })
+    setClients(prev => [created, ...prev])
+    return created
+  }, [authFetch])
+
+  const updateClient = useCallback(async (id, payload) => {
+    const updated = await authFetch(`/clients/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+    setClients(prev => prev.map(c => c._id === id ? updated : c))
+    return updated
+  }, [authFetch])
+
+  const deleteClient = useCallback(async (id) => {
+    await authFetch(`/clients/${id}`, { method: 'DELETE' })
+    setClients(prev => prev.filter(c => c._id !== id))
+  }, [authFetch])
+
+  // ── Factures ─────────────────────────────────────────────────
+  const fetchInvoices = useCallback(async () => {
+    try {
+      const data = await authFetch('/invoices')
+      setInvoices(data)
+      return data
+    } catch (e) {
+      setError(e.message)
+      return []
+    }
+  }, [authFetch])
+
+  const createInvoice = useCallback(async (payload) => {
+    const created = await authFetch('/invoices', { method: 'POST', body: JSON.stringify(payload) })
+    setInvoices(prev => [created, ...prev])
+    return created
+  }, [authFetch])
+
+  const updateInvoiceStatus = useCallback(async (id, status) => {
+    const updated = await authFetch(`/invoices/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
+    setInvoices(prev => prev.map(i => i._id === id ? updated : i))
+    return updated
+  }, [authFetch])
+
+  const approveInvoice = useCallback(async (id) => {
+    const updated = await authFetch(`/invoices/${id}/approve`, { method: 'PATCH' })
+    setInvoices(prev => prev.map(i => i._id === id ? { ...i, ...updated } : i))
+    return updated
+  }, [authFetch])
+
+  const deleteInvoice = useCallback(async (id) => {
+    await authFetch(`/invoices/${id}`, { method: 'DELETE' })
+    setInvoices(prev => prev.filter(i => i._id !== id))
+  }, [authFetch])
+
   const value = {
     // Auth & state
     token,
@@ -358,6 +460,8 @@ export function StoreProvider({ children }) {
     projects,
     users: users.map(u => ({ ...u, name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.name || u.email })),
     tasks,
+    clients,
+    invoices,
     pendingMembers,
     pendingCount,
     loading,
@@ -373,6 +477,9 @@ export function StoreProvider({ children }) {
     // Fonctions Entreprise
     fetchCompanies,
     createCompanyAndJoin,
+    createCompany,
+    updateCompany,
+    deleteCompany,
     joinCompany,
 
     // Fonctions Membres
@@ -390,6 +497,7 @@ export function StoreProvider({ children }) {
     fetchProjects,
     createProject,
     updateProject,
+    approveProject,
     deleteProject,
 
     // CRUD Tâches
@@ -398,6 +506,19 @@ export function StoreProvider({ children }) {
     updateTask,
     updateTaskStatus,
     deleteTask,
+
+    // CRUD Clients
+    fetchClients,
+    createClient,
+    updateClient,
+    deleteClient,
+
+    // CRUD Factures
+    fetchInvoices,
+    createInvoice,
+    updateInvoiceStatus,
+    approveInvoice,
+    deleteInvoice,
   }
 
   return React.createElement(StoreContext.Provider, { value }, children)

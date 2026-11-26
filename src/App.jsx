@@ -10,6 +10,9 @@ import Dashboard from './components/Dashboard'
 import Projects from './components/Projects'
 import KanbanView from './components/Kanban'
 import UsersView from './components/Users'
+import Clients from './components/Clients'
+import Billing from './components/Billing'
+import CompaniesView from './components/Companies'
 import './index.css'
 
 function App() {
@@ -34,14 +37,14 @@ function App() {
         gap: '12px'
       }}>
         <div style={{
-          width: '42px',
-          height: '42px',
+          width: '40px',
+          height: '40px',
           border: '3px solid var(--border-color)',
-          borderTopColor: '#6366f1',
+          borderTopColor: 'var(--accent)',
           borderRadius: '50%',
           animation: 'spin 0.8s linear infinite'
         }} />
-        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Chargement de votre session...</span>
+        <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Chargement de votre session...</span>
       </div>
     )
   }
@@ -118,7 +121,10 @@ function App() {
         <Route index element={<Dashboard />} />
         <Route path="projects" element={<Projects />} />
         <Route path="kanban" element={<KanbanView />} />
+        <Route path="clients" element={<Clients />} />
+        <Route path="billing" element={<Billing />} />
         <Route path="users" element={<UsersView />} />
+        <Route path="companies" element={<CompaniesView />} />
       </Route>
 
       {/* Redirection par défaut */}

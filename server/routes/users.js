@@ -100,39 +100,36 @@ router.put('/:id', async (req, res) => {
   }
 })
 
-// DELETE /api/users/:id - Supprimer un utilisateur (admin uniquement)
+// DELETE /api/users/:id - Supprimer son propre compte uniquement
 router.delete('/:id', async (req, res) => {
   try {
-    // Seul un admin peut supprimer un utilisateur
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Seul un administrateur peut supprimer un utilisateur.' })
+    const userId = new ObjectId(req.params.id)
+
+    if (userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Vous ne pouvez supprimer que votre propre compte.' })
     }
 
-    const userId = new ObjectId(req.params.id)
     const db = getDB()
-
-    const result = await db.collection('users').deleteOne({
-      _id: userId,
-      companyId: req.companyId
-    })
+    const result = await db.collection('users').deleteOne({ _id: userId })
 
     if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Utilisateur introuvable dans cette entreprise.' })
+      return res.status(404).json({ error: 'Utilisateur introuvable.' })
     }
 
-    // Retirer l'utilisateur des projets et désassigner ses tâches
-    await Promise.all([
-      db.collection('projects').updateMany(
-        { companyId: req.companyId },
-        { $pull: { memberIds: userId } }
-      ),
-      db.collection('tasks').updateMany(
-        { companyId: req.companyId, assignedUserId: userId },
-        { $set: { assignedUserId: null, updatedAt: new Date() } }
-      )
-    ])
+    if (req.companyId) {
+      await Promise.all([
+        db.collection('projects').updateMany(
+          { companyId: req.companyId },
+          { $pull: { memberIds: userId } }
+        ),
+        db.collection('tasks').updateMany(
+          { companyId: req.companyId, assignedUserId: userId },
+          { $set: { assignedUserId: null, updatedAt: new Date() } }
+        )
+      ])
+    }
 
-    res.json({ message: 'Utilisateur supprimé avec succès.' })
+    res.json({ message: 'Compte supprimé avec succès.' })
   } catch (error) {
     res.status(400).json({ error: error.message })
   }

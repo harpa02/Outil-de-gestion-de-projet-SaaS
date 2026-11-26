@@ -48,6 +48,8 @@ async function initIndexes() {
     const users = db.collection('users')
     const projects = db.collection('projects')
     const tasks = db.collection('tasks')
+    const clients = db.collection('clients')
+    const invoices = db.collection('invoices')
 
     // Index entreprises
     await companies.createIndex({ slug: 1 }, { unique: true })
@@ -67,6 +69,10 @@ async function initIndexes() {
     await tasks.createIndex({ companyId: 1, projectId: 1, status: 1 })
     await tasks.createIndex({ companyId: 1, assignedUserId: 1 })
     await tasks.createIndex({ companyId: 1, status: 1 })
+
+    await clients.createIndex({ companyId: 1, createdAt: -1 })
+    await invoices.createIndex({ companyId: 1, date: -1 })
+    await invoices.createIndex({ companyId: 1, status: 1 })
 
     console.log('[MongoDB] Index créés avec succès (Isolation multi-tenant & préparation Sharding).')
   } catch (err) {

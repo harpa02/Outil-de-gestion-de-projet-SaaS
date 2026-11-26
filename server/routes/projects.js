@@ -121,12 +121,16 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Certains utilisateurs assignés n\'appartiennent pas à cette entreprise.' })
     }
 
+    const needsApproval = req.user.role === 'member'
     const newProject = {
       companyId: req.companyId,
       name: name.trim(),
       description: description.trim(),
       status, // 'planning' | 'in_progress' | 'completed' | 'archived'
       memberIds: memberObjectIds,
+      createdBy: req.user._id,
+      approvalStatus: needsApproval ? 'pending' : 'approved',
+      approvedAt: needsApproval ? null : new Date(),
       createdAt: new Date(),
       updatedAt: new Date()
     }
@@ -135,6 +139,25 @@ router.post('/', async (req, res) => {
     res.status(201).json({ ...newProject, _id: result.insertedId })
   } catch (error) {
     res.status(500).json({ error: error.message })
+  }
+})
+
+// PATCH /api/projects/:id/approve - Valider un projet (manager/admin)
+router.patch('/:id/approve', async (req, res) => {
+  try {
+    if (!['admin', 'manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Seul un manager ou un administrateur peut valider un projet.' })
+    }
+    const db = getDB()
+    const result = await db.collection('projects').findOneAndUpdate(
+      { _id: new ObjectId(req.params.id), companyId: req.companyId },
+      { $set: { approvalStatus: 'approved', approvedAt: new Date(), approvedBy: req.user._id, updatedAt: new Date() } },
+      { returnDocument: 'after' }
+    )
+    if (!result) return res.status(404).json({ error: 'Projet introuvable' })
+    res.json(result)
+  } catch (error) {
+    res.status(400).json({ error: error.message })
   }
 })
 

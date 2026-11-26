@@ -5,12 +5,12 @@ import { Building2, Plus, Trash2, Pencil, X, Loader2, Users, Briefcase, CheckCir
 const PLAN_OPTIONS = ['Starter', 'Pro', 'Enterprise']
 
 function CompanyModal({ company, onClose, onSave }) {
-  const { createCompany, updateCompany } = useStore()
-  const [name, setName]             = useState(company?.name        || '')
-  const [description, setDesc]      = useState(company?.description || '')
-  const [plan, setPlan]             = useState(company?.plan        || 'Pro')
-  const [loading, setLoading]       = useState(false)
-  const [err, setErr]               = useState('')
+  const { createCompanyAndJoin, updateCompany } = useStore()
+  const [name, setName] = useState(company?.name || '')
+  const [description, setDesc] = useState(company?.description || '')
+  const [plan, setPlan] = useState(company?.plan || 'Pro')
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -18,9 +18,7 @@ function CompanyModal({ company, onClose, onSave }) {
     setErr('')
     try {
       const payload = { name, description, plan }
-      const saved = company
-        ? await updateCompany(company._id, payload)
-        : await createCompany(payload)
+      const saved = company ? await updateCompany(company._id, payload) : await createCompanyAndJoin(name, description)
       onSave(saved)
     } catch (e) {
       setErr(e.message)
@@ -30,31 +28,35 @@ function CompanyModal({ company, onClose, onSave }) {
   }
 
   return (
-    <div style={overlayStyle}>
-      <div style={{ ...modalStyle, maxWidth: '420px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h3 style={{ margin: 0 }}>{company ? 'Modifier l\'entreprise' : 'Nouvelle entreprise'}</h3>
-          <button onClick={onClose} style={iconBtnStyle}><X size={18} /></button>
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+      <div className="card" style={{ width: '100%', maxWidth: '480px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h2 style={{ fontSize: '18px' }}>{company ? 'Modifier l\'entreprise' : 'Nouvelle entreprise'}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={20} /></button>
         </div>
-        {err && <div style={errStyle}>{err}</div>}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={labelStyle}>Nom de l'entreprise *</label>
-            <input required value={name} onChange={e => setName(e.target.value)} style={inputStyle} placeholder="ex: Acme Corp" />
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '6px' }}>Nom *</label>
+            <input required value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border-color)', borderRadius: '8px', fontSize: '14px', backgroundColor: 'var(--bg-color)', color: 'var(--text-main)' }} />
           </div>
           <div>
-            <label style={labelStyle}>Description</label>
-            <input value={description} onChange={e => setDesc(e.target.value)} style={inputStyle} placeholder="Activité principale..." />
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '6px' }}>Description</label>
+            <textarea value={description} onChange={e => setDesc(e.target.value)} rows={2} style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border-color)', borderRadius: '8px', fontSize: '14px', backgroundColor: 'var(--bg-color)', color: 'var(--text-main)', resize: 'vertical' }} />
           </div>
           <div>
-            <label style={labelStyle}>Plan</label>
-            <select value={plan} onChange={e => setPlan(e.target.value)} style={inputStyle}>
-              {PLAN_OPTIONS.map(p => <option key={p}>{p}</option>)}
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '6px' }}>Plan</label>
+            <select value={plan} onChange={e => setPlan(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border-color)', borderRadius: '8px', fontSize: '14px', backgroundColor: 'var(--bg-color)', color: 'var(--text-main)' }}>
+              {PLAN_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ marginTop: '4px' }}>
-            {loading ? <Loader2 size={16} className="animate-spin" /> : (company ? 'Enregistrer' : 'Créer l\'entreprise')}
-          </button>
+          {err && <p style={{ color: '#ef4444', fontSize: '13px' }}>{err}</p>}
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Annuler</button>
+            <button type="submit" className="btn btn-primary" disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {loading && <Loader2 size={15} className="animate-spin" />}
+              {company ? 'Enregistrer' : 'Créer'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -62,127 +64,74 @@ function CompanyModal({ company, onClose, onSave }) {
 }
 
 export default function CompaniesView() {
-  const { companies, fetchCompanies, deleteCompany, currentCompany, logout } = useStore()
-  const [modalCompany, setModalCompany] = useState(null)
+  const { companies, company: currentCompany, user, fetchCompanies, deleteCompany } = useStore()
   const [loading, setLoading] = useState(true)
+  const [modal, setModal] = useState(null)
+  const [deleting, setDeleting] = useState(null)
 
-  useEffect(() => {
-    fetchCompanies().finally(() => setLoading(false))
-  }, [])
+  const load = () => { setLoading(true); fetchCompanies().finally(() => setLoading(false)) }
+  useEffect(load, [fetchCompanies])
 
-  const handleDelete = async (company) => {
-    if (!confirm(`Supprimer "${company.name}" et TOUTES ses données associées ?`)) return
-    await deleteCompany(company._id)
+  const handleDelete = async (id, name) => {
+    if (!confirm(`Supprimer l'entreprise « ${name} » ? Toutes les données associées seront supprimées.`)) return
+    setDeleting(id)
+    try { await deleteCompany(id); load() } catch (e) { alert(e.message) }
+    finally { setDeleting(null) }
   }
 
-  const handleSwitchCompany = () => {
-    logout()
-  }
-
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}><Loader2 size={28} className="animate-spin" color="#8b5cf6" /></div>
+  const canManage = (c) => c.createdBy && user?._id && String(c.createdBy) === String(user._id)
 
   return (
     <div>
+      {modal !== null && <CompanyModal company={modal === 'new' ? null : modal} onClose={() => setModal(null)} onSave={() => { setModal(null); load() }} />}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
-        <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-          <Building2 size={26} color="#8b5cf6" /> Entreprises
-        </h1>
-        <button className="btn btn-primary" onClick={() => setModalCompany({})} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Plus size={16} /> Nouvelle entreprise
-        </button>
+        <div>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '0 0 4px' }}><Building2 size={26} color="#6366f1" /> Entreprises</h1>
+          <p style={{ margin: 0 }}>Seul le créateur peut modifier ou supprimer son entreprise.</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => setModal('new')} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Plus size={16} /> Nouvelle entreprise</button>
       </div>
 
-      {companies.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '48px' }}>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px' }}><Loader2 size={28} className="animate-spin" color="#6366f1" /></div>
+      ) : companies.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Building2 size={40} color="#d1d5db" style={{ margin: '0 auto 12px' }} />
           <h3 style={{ color: 'var(--text-secondary)' }}>Aucune entreprise</h3>
-          <p>Créez votre première entreprise.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-          {companies.map(company => {
-            const planColors = { Starter: '#10b981', Pro: '#6366f1', Enterprise: '#f59e0b' }
-            const planColor = planColors[company.plan] || '#6366f1'
-            const isCurrent = company._id === currentCompany?._id
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+          {companies.map(c => {
+            const isSelected = currentCompany?._id === c._id
+            const owner = canManage(c)
             return (
-              <div key={company._id} className="card" style={{ border: isCurrent ? '2px solid #6366f1' : '1px solid var(--border-color)', position: 'relative' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: planColor + '22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Building2 size={20} color={planColor} />
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '15px' }}>{company.name}</div>
-                      <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
-                        <span style={{ fontSize: '11px', padding: '1px 7px', borderRadius: '99px', backgroundColor: planColor + '22', color: planColor, fontWeight: 600 }}>
-                          Plan {company.plan}
-                        </span>
-                        {isCurrent && (
-                          <span style={{ fontSize: '11px', padding: '1px 7px', borderRadius: '99px', backgroundColor: '#e0e7ff', color: '#4338ca', fontWeight: 600 }}>
-                            Espace actif
-                          </span>
-                        )}
-                      </div>
-                    </div>
+              <div key={c._id} className="card" style={{ border: isSelected ? '2px solid #6366f1' : '1px solid var(--border-color)', position: 'relative' }}>
+                {isSelected && <div style={{ position: 'absolute', top: '14px', right: '14px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: '#6366f1', backgroundColor: '#ede9fe', padding: '3px 8px', borderRadius: '99px' }}><CheckCircle2 size={12} /> Active</div>}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '14px' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: isSelected ? '#ede9fe' : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={22} color={isSelected ? '#6366f1' : '#6b7280'} /></div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '16px', marginBottom: '2px', paddingRight: isSelected ? '60px' : 0 }}>{c.name}</div>
+                    {c.description && <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{c.description}</div>}
                   </div>
                 </div>
-
-                {company.description && (
-                  <p style={{ fontSize: '13px', margin: '0 0 14px' }}>{company.description}</p>
+                <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Users size={13} />{c.userCount ?? 0} membres</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Briefcase size={13} />{c.projectCount ?? 0} projets</span>
+                </div>
+                {owner && (
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => setModal(c)}><Pencil size={13} /> Modifier</button>
+                    <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }} disabled={deleting === c._id} onClick={() => handleDelete(c._id, c.name)}>
+                      {deleting === c._id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />} Supprimer
+                    </button>
+                  </div>
                 )}
-
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    <Users size={14} /> {company.userCount ?? 0} membres
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    <Briefcase size={14} /> {company.projectCount ?? 0} projets
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    <CheckCircle2 size={14} /> {company.taskCount ?? 0} tâches
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-                  {!isCurrent ? (
-                    <button onClick={handleSwitchCompany} className="btn btn-secondary" style={{ flex: 1, fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#6366f1', borderColor: '#c7d2fe' }}>
-                      Changer d'espace
-                    </button>
-                  ) : (
-                    <button onClick={() => setModalCompany(company)} className="btn btn-secondary" style={{ flex: 1, fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                      <Pencil size={14} /> Modifier
-                    </button>
-                  )}
-                  {isCurrent && (
-                    <button onClick={() => setModalCompany(company)} className="btn btn-secondary" style={{ fontSize: '13px', padding: '8px 10px' }} title="Modifier">
-                      <Pencil size={14} />
-                    </button>
-                  )}
-                  <button onClick={() => handleDelete(company)} className="btn btn-secondary" style={{ color: '#ef4444', borderColor: '#fecaca', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }} title="Supprimer">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
               </div>
             )
           })}
         </div>
       )}
-
-      {modalCompany !== null && (
-        <CompanyModal
-          company={Object.keys(modalCompany).length ? modalCompany : null}
-          onClose={() => setModalCompany(null)}
-          onSave={() => { setModalCompany(null); fetchCompanies() }}
-        />
-      )}
     </div>
   )
 }
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-const inputStyle = { width: '100%', padding: '10px 12px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '14px', boxSizing: 'border-box', fontFamily: 'inherit' }
-const labelStyle = { display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }
-const errStyle   = { padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#dc2626', fontSize: '13px', marginBottom: '14px' }
-const overlayStyle = { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }
-const modalStyle   = { backgroundColor: 'var(--card-bg)', borderRadius: '14px', padding: '28px', width: '100%', border: '1px solid var(--border-color)' }
-const iconBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: '4px' }

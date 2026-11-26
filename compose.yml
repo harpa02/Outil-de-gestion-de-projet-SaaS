@@ -19,11 +19,12 @@ services:
     container_name: saas_pm_app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:3000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - PORT=3000
-      - MONGODB_URI=mongodb://mongodb:27017/saas_pm
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/saas_pm}
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-me}
     depends_on:
       mongodb:
         condition: service_healthy

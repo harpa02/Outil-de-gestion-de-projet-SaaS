@@ -1,12 +1,11 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../../store'
-import { Building2, ArrowRight, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
+import { Building2, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 export default function RegisterPage() {
   const { register } = useStore()
   const navigate = useNavigate()
-
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -18,22 +17,11 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setErr('')
-
-    if (password.length < 6) {
-      setErr('Le mot de passe doit comporter au moins 6 caractères.')
-      return
-    }
-
-    if (password !== confirmPassword) {
-      setErr('Les mots de passe ne correspondent pas.')
-      return
-    }
-
+    if (password.length < 6) return setErr('Le mot de passe doit comporter au moins 6 caractères.')
+    if (password !== confirmPassword) return setErr('Les mots de passe ne correspondent pas.')
     setLoading(true)
-
     try {
       await register(firstName, lastName, email, password)
-      // Étape 1 validée avec succès -> passage direct à l'étape 2 (Entreprise)
       navigate('/onboarding')
     } catch (e) {
       setErr(e.message || 'Erreur lors de la création du compte')
@@ -43,233 +31,51 @@ export default function RegisterPage() {
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: '100vh',
-      backgroundColor: 'var(--bg-color)',
-      padding: '24px'
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '480px',
-        backgroundColor: 'var(--card-bg)',
-        borderRadius: '16px',
-        padding: '36px',
-        boxShadow: '0 8px 30px rgba(0,0,0,0.06)',
-        border: '1px solid var(--border-color)'
-      }}>
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{
-            width: '52px',
-            height: '52px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 16px',
-            boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)'
-          }}>
-            <Building2 size={26} color="#fff" />
+    <div style={{ minHeight: '100dvh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box', backgroundColor: 'var(--bg-color)' }}>
+      <div style={{ width: '100%', maxWidth: '440px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 24 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card-bg)' }}>
+            <Building2 size={18} color="var(--text-main)" />
           </div>
-          <h2 style={{ margin: '0 0 6px', fontSize: '22px', color: 'var(--text-main)', fontWeight: 700 }}>
-            Créer un compte
-          </h2>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Inscription par étapes à la plateforme SaaS
-          </p>
+          <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-main)' }}>AgencyOS</span>
         </div>
 
-        {/* Stepper indicateur */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '12px',
-          marginBottom: '24px',
-          padding: '10px 14px',
-          backgroundColor: 'var(--bg-color)',
-          borderRadius: '10px',
-          border: '1px solid var(--border-color)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{
-              width: '22px',
-              height: '22px',
-              borderRadius: '50%',
-              backgroundColor: '#6366f1',
-              color: '#fff',
-              fontSize: '11px',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>1</div>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)' }}>Vos informations</span>
+        <div style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '28px' }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 18, justifyContent: 'center', alignItems: 'center' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', background: 'var(--accent-soft)', padding: '4px 10px', borderRadius: 99 }}>1. Informations</span>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>→ 2. Entreprise</span>
+          </div>
+          <div style={{ textAlign: 'center', marginBottom: 22 }}>
+            <h1 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 600 }}>Créer un compte</h1>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>Renseignez vos informations pour commencer.</p>
           </div>
 
-          <div style={{ width: '24px', height: '1px', backgroundColor: 'var(--border-color)' }} />
+          {err && <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', border: '1px solid #fecaca', borderRadius: 8, color: '#b91c1c', background: '#fef2f2', fontSize: 13, marginBottom: 16 }}><AlertCircle size={16} /><span>{err}</span></div>}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.5 }}>
-            <div style={{
-              width: '22px',
-              height: '22px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--border-color)',
-              color: 'var(--text-secondary)',
-              fontSize: '11px',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>2</div>
-            <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)' }}>Entreprise</span>
-          </div>
-        </div>
-
-        {err && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '12px 14px',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: '8px',
-            color: '#dc2626',
-            fontSize: '13px',
-            marginBottom: '20px'
-          }}>
-            <AlertCircle size={16} style={{ flexShrink: 0 }} />
-            <span>{err}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
-              <label style={labelStyle}>Prénom *</label>
-              <input
-                type="text"
-                required
-                autoFocus
-                value={firstName}
-                onChange={e => setFirstName(e.target.value)}
-                placeholder="Jean"
-                style={inputStyle}
-              />
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div><label htmlFor="firstName" style={labelStyle}>Prénom</label><input id="firstName" required autoFocus autoComplete="given-name" value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} /></div>
+              <div><label htmlFor="lastName" style={labelStyle}>Nom</label><input id="lastName" required autoComplete="family-name" value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} /></div>
             </div>
+            <div><label htmlFor="email" style={labelStyle}>Adresse e-mail</label><input id="email" type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom@entreprise.fr" style={inputStyle} /></div>
+            <div><label htmlFor="password" style={labelStyle}>Mot de passe</label><input id="password" type="password" required minLength={6} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Au moins 6 caractères" style={inputStyle} /></div>
             <div>
-              <label style={labelStyle}>Nom *</label>
-              <input
-                type="text"
-                required
-                value={lastName}
-                onChange={e => setLastName(e.target.value)}
-                placeholder="Dupont"
-                style={inputStyle}
-              />
+              <label htmlFor="confirmPassword" style={labelStyle}>Confirmer le mot de passe</label>
+              <input id="confirmPassword" type="password" required minLength={6} autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} style={inputStyle} />
+              {confirmPassword && password === confirmPassword && <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#15803d', marginTop: 4 }}><CheckCircle2 size={12} /> Les mots de passe correspondent</div>}
             </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Adresse email *</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="jean.dupont@exemple.com"
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Mot de passe * (min. 6 caractères)</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Confirmer le mot de passe *</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              placeholder="••••••••"
-              style={inputStyle}
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={loading}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              padding: '12px',
-              marginTop: '8px',
-              fontWeight: 600
-            }}
-          >
-            {loading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <>Étape suivante : Choisir mon entreprise <ArrowRight size={16} /></>
-            )}
-          </button>
-        </form>
-
-        <div style={{
-          marginTop: '24px',
-          paddingTop: '20px',
-          borderTop: '1px solid var(--border-color)',
-          textAlign: 'center',
-          fontSize: '13px',
-          color: 'var(--text-secondary)'
-        }}>
-          Vous avez déjà un compte ?{' '}
-          <Link to="/login" style={{ color: '#6366f1', fontWeight: 600, textDecoration: 'none' }}>
-            Se connecter
-          </Link>
+            <button type="submit" disabled={loading} style={buttonStyle}>{loading ? <><Loader2 size={16} className="animate-spin" /> Création…</> : 'Continuer'}</button>
+          </form>
         </div>
+
+        <p style={{ margin: '18px 0 0', fontSize: 14, color: 'var(--text-secondary)', textAlign: 'center' }}>
+          Déjà un compte ? <Link to="/login" style={{ color: 'var(--text-main)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 }}>Se connecter</Link>
+        </p>
       </div>
     </div>
   )
 }
 
-const labelStyle = {
-  display: 'block',
-  fontSize: '13px',
-  fontWeight: 600,
-  color: 'var(--text-main)',
-  marginBottom: '6px'
-}
-
-const inputStyle = {
-  width: '100%',
-  padding: '10px 12px',
-  border: '1px solid var(--border-color)',
-  borderRadius: '8px',
-  backgroundColor: 'var(--bg-color)',
-  color: 'var(--text-main)',
-  fontSize: '14px',
-  boxSizing: 'border-box',
-  outline: 'none',
-  fontFamily: 'inherit'
-}
+const labelStyle = { display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-main)', marginBottom: 6 }
+const inputStyle = { width: '100%', padding: '10px 12px', border: '1px solid var(--border-color)', borderRadius: 8, backgroundColor: 'var(--bg-color)', color: 'var(--text-main)', fontSize: 14, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }
+const buttonStyle = { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 14px', marginTop: 4, borderRadius: 8, border: '1px solid var(--accent)', background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }

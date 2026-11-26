@@ -1,85 +1,85 @@
-# SaaS Project Manager
+# AgencyOS - SaaS Project Manager (TD1 Partie I)
 
-Outil de gestion de projet multi-entreprises inspiré de Trello / Notion / ClickUp, développé dans le cadre du **TD1 – Architecture MongoDB & SaaS**.
+Application de gestion de projet multi-entreprises (SaaS), inspirée de Trello / Notion / ClickUp.
 
-## Stack technique
+## Stack
 
-| Couche     | Technologie                        |
-|------------|------------------------------------|
-| Frontend   | React 19 + Vite 8 (SPA)           |
-| Backend    | Node.js + Express 5 (API REST)     |
-| Base de données | MongoDB 7 (driver officiel)  |
-| Conteneurisation | Docker + Docker Compose      |
+- Frontend: React 19 + Vite 8
+- Backend: Node.js + Express 5 (API REST)
+- Base de données: MongoDB 7 (driver officiel `mongodb`)
+- Conteneurisation: Docker + Docker Compose
 
----
+## Démarrage (livrable)
 
-## Démarrage en une seule commande
+Prérequis: Docker et Docker Compose.
 
 ```bash
 docker compose up -d --build
 ```
 
-L'application est ensuite accessible sur : **http://localhost:3000**
+Application: http://localhost:3000
 
-> Aucune installation de dépendances ni configuration manuelle supplémentaire n'est nécessaire, à l'exception de **Docker** et **Docker Compose**.
-
----
+Aucune installation de dépendances ni configuration manuelle supplémentaire n'est nécessaire. Les variables ont des valeurs par défaut fonctionnelles dans `compose.yml`.
 
 ## Configuration
 
-La connexion MongoDB est entièrement configurable via la variable d'environnement `MONGODB_URI` dans le fichier `compose.yml`, sans modifier le code source :
+La connexion MongoDB est configurable sans modifier le code source via `MONGODB_URI`.
 
-```yaml
-environment:
-  - MONGODB_URI=mongodb://mongodb:27017/saas_pm
+Fichier de configuration fourni: `.env.example`.
+
+Variables:
+
+| Variable | Défaut | Description |
+|---|---|---|
+| `PORT` | `3000` | Port exposé par l'application |
+| `NODE_ENV` | `production` | Mode Node |
+| `MONGODB_URI` | `mongodb://mongodb:27017/saas_pm` | URI MongoDB (standalone, replica set, mongos) |
+| `JWT_SECRET` | `dev-secret-change-me` | Secret JWT (à changer en production) |
+
+Exemple pour la Partie II (réplication/sharding), sans modifier le code:
+
+```env
+MONGODB_URI=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/saas_pm?replicaSet=rs0
 ```
 
-Pour pointer vers un Replica Set ou un cluster sharder (Partie II), il suffit de modifier cette valeur :
+## Fonctionnalités (TD1 Partie I)
 
-```yaml
-  - MONGODB_URI=mongodb://rs1:27017,rs2:27017,rs3:27017/saas_pm?replicaSet=rs0
+- Authentification JWT (inscription, connexion).
+- Multi-tenant strict: toutes les données métier sont filtrées par `companyId` issu du JWT.
+- Entreprises: création, modification, suppression. **Seul le créateur de l'entreprise peut la modifier ou la supprimer**. Suppression en cascade des données de l'entreprise.
+- Utilisateurs: inscription, demande d'adhésion à une entreprise, approbation/rejet par admin, modification de profil/rôle, **suppression possible uniquement par l'utilisateur lui-même**.
+- Projets: CRUD, assignation d'utilisateurs, statut, progression.
+- Tâches: CRUD, assignation à un utilisateur, statut, priorité, échéance, visualisation Kanban.
+- Fonctionnalités supplémentaires: clients, facturation, recherche globale, indicateurs d'échéance/dashboard.
+
+## Utilisation rapide
+
+1. Lancer `docker compose up -d --build`.
+2. Ouvrir http://localhost:3000.
+3. Créer un compte.
+4. Créer une entreprise ou demander à rejoindre une entreprise existante.
+5. Une fois actif dans une entreprise, accéder aux projets, tâches, Kanban, membres.
+
+## Isolation multi-tenant
+
+- L'identité et `companyId` proviennent du token JWT (`requireAuth`).
+- Les routes métier filtrent systématiquement par `companyId`.
+- La suppression d'entreprise supprime en cascade utilisateurs, projets, tâches, clients et factures liés à cette entreprise.
+
+## Commandes utiles
+
+```bash
+docker compose up -d --build
+docker compose logs -f app
+docker compose down
+docker compose down -v  # supprime aussi les données Mongo
 ```
 
----
+## Livrables
 
-## Fonctionnalités principales
-
-- ✅ **Multi-tenant strict** : isolation par `companyId` sur toutes les collections
-- ✅ **Gestion des entreprises** : création, modification, suppression en cascade
-- ✅ **Gestion des projets** : CRUD, assignation de membres, suivi de progression
-- ✅ **Gestion des utilisateurs** : CRUD, rôles (admin / manager / membre)
-- ✅ **Tableau Kanban** : visualisation et déplacement des tâches entre 4 colonnes
-- ✅ **Tâches** : création, assignation, priorité, date d'échéance, statut
-- ✅ **Données de démo** : 2 entreprises pré-peuplées au premier démarrage
-
----
-
-## Architecture Docker
-
-```
-compose.yml
-├── mongodb   (mongo:7, port 27017, volume persistant)
-└── app       (build Dockerfile multi-stage, port 3000)
-```
-
-Le service `app` attend que le healthcheck de `mongodb` soit validé avant de démarrer.
-
----
-
-## Données de démonstration
-
-Au premier démarrage (base vide), deux entreprises sont injectées automatiquement pour tester l'étanchéité multi-tenant :
-
-| Entreprise            | Plan       | Membres | Projets |
-|-----------------------|------------|---------|---------|
-| Acme Innovation SaaS  | Enterprise | 3       | 2       |
-| Nova Studio Digital   | Pro        | 2       | 1       |
-
----
-
-## Livrables TD1
-
-- 📄 [Spécification Technique (Architecture MongoDB & Schémas JSON)](docs/SPECIFICATION_TECHNIQUE.md)
-- 📋 [Spécification Fonctionnelle (Fonctionnalités & Rôles)](docs/SPECIFICATION_FONCTIONNELLE.md)
-- 🐳 `Dockerfile` + `compose.yml` (Démarrage 1 commande via `docker compose up -d --build`)
-
+- [Spécification technique](docs/SPECIFICATION_TECHNIQUE.md)
+- [Spécification fonctionnelle](docs/SPECIFICATION_FONCTIONNELLE.md)
+- `Dockerfile`
+- `compose.yml`
+- `.env.example`
+- `README.md`

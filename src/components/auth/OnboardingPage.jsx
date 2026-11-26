@@ -140,7 +140,7 @@ export default function OnboardingPage() {
             width: '52px',
             height: '52px',
             borderRadius: '12px',
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            background: 'var(--accent)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -181,18 +181,18 @@ export default function OnboardingPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
-            }}>✓</div>
+            }}><Check size={12} color="#fff" /></div>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)' }}>Vos informations</span>
           </div>
 
-          <div style={{ width: '24px', height: '2px', backgroundColor: '#6366f1' }} />
+          <div style={{ width: '24px', height: '2px', backgroundColor: 'var(--accent)' }} />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{
               width: '22px',
               height: '22px',
               borderRadius: '50%',
-              backgroundColor: '#6366f1',
+              backgroundColor: 'var(--accent)',
               color: '#fff',
               fontSize: '11px',
               fontWeight: 700,
@@ -200,7 +200,7 @@ export default function OnboardingPage() {
               alignItems: 'center',
               justifyContent: 'center'
             }}>2</div>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#6366f1' }}>Entreprise</span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent)' }}>Entreprise</span>
           </div>
         </div>
 
@@ -244,7 +244,7 @@ export default function OnboardingPage() {
                 transition: 'all 0.15s ease'
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#6366f1'
+                e.currentTarget.style.borderColor = 'var(--accent)'
                 e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.04)'
               }}
               onMouseLeave={e => {
@@ -256,13 +256,13 @@ export default function OnboardingPage() {
                 width: '46px',
                 height: '46px',
                 borderRadius: '10px',
-                backgroundColor: '#ede9fe',
+                backgroundColor: 'var(--accent-soft)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0
               }}>
-                <Users size={22} color="#6366f1" />
+                <Users size={22} color="var(--accent)" />
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-main)', marginBottom: '3px' }}>
@@ -333,7 +333,7 @@ export default function OnboardingPage() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#6366f1',
+                  color: 'var(--accent)',
                   fontSize: '13px',
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -366,7 +366,7 @@ export default function OnboardingPage() {
 
             {fetching ? (
               <div style={{ textAlign: 'center', padding: '36px' }}>
-                <Loader2 size={24} className="animate-spin" color="#6366f1" />
+                <Loader2 size={24} className="animate-spin" color="var(--accent)" />
               </div>
             ) : companies.length === 0 ? (
               <div style={{
@@ -419,7 +419,7 @@ export default function OnboardingPage() {
                         gap: '12px',
                         padding: '12px 14px',
                         borderRadius: '10px',
-                        border: `1.5px solid ${isSelected ? '#6366f1' : 'var(--border-color)'}`,
+                        border: `1.5px solid ${isSelected ? 'var(--accent)' : 'var(--border-color)'}`,
                         backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.05)' : 'transparent',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease'
@@ -429,13 +429,13 @@ export default function OnboardingPage() {
                         width: '36px',
                         height: '36px',
                         borderRadius: '8px',
-                        backgroundColor: isSelected ? '#ede9fe' : 'var(--bg-color)',
+                        backgroundColor: isSelected ? 'var(--accent-soft)' : 'var(--bg-color)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0
                       }}>
-                        <Building2 size={18} color={isSelected ? '#6366f1' : 'var(--text-secondary)'} />
+                        <Building2 size={18} color={isSelected ? 'var(--accent)' : 'var(--text-secondary)'} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -452,7 +452,7 @@ export default function OnboardingPage() {
                           width: '22px',
                           height: '22px',
                           borderRadius: '50%',
-                          backgroundColor: '#6366f1',
+                          backgroundColor: 'var(--accent)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center'
@@ -523,7 +523,7 @@ export default function OnboardingPage() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#6366f1',
+                  color: 'var(--accent)',
                   fontSize: '13px',
                   fontWeight: 600,
                   cursor: 'pointer',

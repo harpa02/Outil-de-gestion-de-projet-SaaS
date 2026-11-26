@@ -10,8 +10,7 @@ import {
   ShieldCheck,
   Clock,
   AlertCircle,
-  UserCheck,
-  UserX
+  UserCheck
 } from 'lucide-react'
 
 const ROLE_OPTIONS = [
@@ -31,7 +30,8 @@ export default function UsersView() {
     approveMember,
     rejectMember,
     changeMemberRole,
-    deleteUser
+    deleteUser,
+    logout
   } = useStore()
 
   const [loading, setLoading] = useState(true)
@@ -106,19 +106,16 @@ export default function UsersView() {
     }
   }
 
-  const handleDeleteMember = async (member) => {
-    if (!confirm(`Êtes-vous sûr de vouloir retirer ${member.firstName} ${member.lastName} de l'entreprise ?`)) return
+  const handleDeleteSelf = async () => {
+    if (!confirm('Supprimer votre compte ? Cette action est irréversible.')) return
 
-    setActionLoadingId(member._id)
+    setActionLoadingId(currentUser?._id)
     setErr('')
     try {
-      await deleteUser(member._id)
-      await loadData()
-      setSuccessMsg(`${member.firstName} ${member.lastName} a été retiré de l'entreprise.`)
-      setTimeout(() => setSuccessMsg(''), 4000)
+      await deleteUser(currentUser._id)
+      logout()
     } catch (e) {
       setErr(e.message || 'Erreur lors de la suppression')
-    } finally {
       setActionLoadingId(null)
     }
   }
@@ -409,26 +406,27 @@ export default function UsersView() {
                       </span>
                     )}
 
-                    {/* Bouton de suppression (Admin uniquement, sauf sur soi-même) */}
-                    {isAdmin && !isSelf && (
+                    {isSelf && (
                       <button
                         type="button"
-                        onClick={() => handleDeleteMember(member)}
+                        onClick={handleDeleteSelf}
                         disabled={actionLoadingId === member._id}
-                        title="Retirer le membre de l'entreprise"
+                        title="Supprimer mon compte"
                         style={{
                           background: 'none',
-                          border: '1px solid var(--border-color)',
+                          border: '1px solid #fecaca',
                           borderRadius: '6px',
                           cursor: 'pointer',
-                          padding: '6px',
+                          padding: '6px 10px',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#ef4444'
+                          gap: '6px',
+                          color: '#dc2626',
+                          fontSize: '12px',
+                          fontWeight: 600
                         }}
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={14} /> Supprimer mon compte
                       </button>
                     )}
                   </div>
